@@ -1,10 +1,10 @@
-import * as Path from "path";
-
 export abstract class RunHandle {
     private readonly _uuid;
+    private readonly _runType;
 
-    constructor(uuid: string) {
+    constructor(runType: string, uuid: string) {
         this._uuid = uuid;
+        this._runType = runType;
     }
 
     public abstract getHeader(): Uint8Array;
@@ -14,4 +14,11 @@ export abstract class RunHandle {
     }
 
     public abstract getPlayStream(timestamp?: number, scale?: number): ReadableStream;
+
+    public toJSON() {
+        return {
+            uuid: this._uuid,
+            type: this._runType,
+        }
+    }
 }

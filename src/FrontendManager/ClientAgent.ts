@@ -14,7 +14,19 @@ export class ClientAgent {
         io.on(CHANNELS.DATA_PLAY_REQUEST, this.handlePlayRequest.bind(this));
         io.on(CHANNELS.RUN_INIT_REQUEST, this.handleRunInitRequest.bind(this));
         io.on(CHANNELS.RUN_HEADER_REQUEST, this.handleRunHeaderRequest.bind(this));
-        io.emit(CHANNELS.RUNS_LIST, rm.runs());
+        io.on(CHANNELS.RUN_STOP_REQUEST, this.handleRunStopRequest.bind(this));
+        io.on(CHANNELS.RUN_DELETE_REQUEST, this.handleRunDeleteRequest.bind(this));
+
+
+        this.initClient();
+    }
+
+    /**
+     * Send off entire current state.
+     */
+    initClient() {
+        this.io.emit(CHANNELS.RUNS_LIST, this.runManager.runs());
+        this.io.emit(CHANNELS.CAPABILITIES, this.runManager.capabilities());
     }
 
     handleFrameRequest(uuid: string, timestamp: number) {
@@ -26,14 +38,27 @@ export class ClientAgent {
 
     }
 
-    handleRunCloseRequest() {
-
+    handleRunStopRequest(uuid: string) {
+        try {
+            this.runManager.stopRunStorage(uuid);
+        } catch (e: any) {
+            this.emitError(e.message);
+        }
     }
 
-    handleRunInitRequest() {
+    handleRunInitRequest(reqUUID: string) {
         console.log("INIT REQUESTED");
         try {
-            this.runManager.initRunStorage();
+            this.runManager.beginRunStorage(reqUUID);
+        } catch (e: any) {
+            this.emitError(e.message);
+        }
+    }
+
+    handleRunDeleteRequest(uuid: string) {
+        console.log(`DELETING ${uuid}`);
+        try {
+            this.runManager.deleteStoredRun(uuid);
         } catch (e: any) {
             this.emitError(e.message);
         }
@@ -43,8 +68,10 @@ export class ClientAgent {
 
     }
 
-    emitError(e: any) {
-        this.io.emit(CHANNELS.GENERAL_ERROR, e.message);
+    emitError(errorMessage: string) {
+        console.log(`emitting error: ${errorMessage}`);
+        console.log(errorMessage);
+        this.io.emit(CHANNELS.GENERAL_ERROR, errorMessage);
     }
 
 

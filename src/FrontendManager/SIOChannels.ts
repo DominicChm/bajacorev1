@@ -7,6 +7,10 @@ export const CHANNELS = {
     RUNS_LIST: "runs_list",
     RUN_STOP_REQUEST: "run_stop",
     RUN_INIT_REQUEST: "run_init",
+    RUN_DELETE_REQUEST: "run_delete",
 
-    GENERAL_ERROR: "general_error"
+
+    GENERAL_ERROR: "general_error",
+
+    CAPABILITIES: "capabilities"
 }

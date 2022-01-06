@@ -6,13 +6,18 @@ import {RunHandle} from "./RunHandle";
 import EventEmitter from "events";
 import TypedEmitter from "typed-emitter"
 import {v4 as uuidv4} from "uuid";
+import {Capabilties} from "./interfaces/capabilties";
 
 export type Newable<T> = { new(...args: any[]): T; };
 
 interface RunManagerEvents {
-    run_init: () => void
+    run_change: () => void
 }
 
+/**
+ * Manages all components responsible for managing run data.
+ * Central component for creating, removing, reading, and storing runs.
+ */
 export class RunManager extends (EventEmitter as new () => TypedEmitter<RunManagerEvents>) {
     private fileManager: FileManager | undefined;
     private moduleManager: ModuleManager | undefined;
@@ -24,29 +29,18 @@ export class RunManager extends (EventEmitter as new () => TypedEmitter<RunManag
         this.moduleManager = moduleManager ?? undefined;
     }
 
-    public createPlayStream(run: RunHandle, timeStamp?: number, scale?: number) {
-        if (run instanceof RealtimeRun && !(timeStamp == null && scale == null))
-            throw new Error("Error playing: Scale and timestamp are not supported for realtime runs!");
-
-        if (run instanceof RealtimeRun && this.moduleManager == null)
-            throw new Error("Error playing: Can't play realtime run - no ModuleManager instance!")
-
-        if (run instanceof StoredRun && this.fileManager == null)
-            throw new Error("Error playing: Can't play stored run - no FileManager instance!")
-
-        //Create either realtime or historical pipe here.
-
-    }
-
     public runs(): RunHandle[] {
         //Return all run objects
         this._runs = [];
 
         if (this.fileManager)
             this._runs = this._runs.concat(this.fileManager.getRuns());
+
         if (this.moduleManager)
             this._runs = this._runs.concat(this.moduleManager.getRuns());
 
+        //Filter destroyed runs.
+        this._runs = this._runs.filter(r => !(r instanceof StoredRun && r.destroyed()));
         return this._runs;
     }
 
@@ -61,7 +55,7 @@ export class RunManager extends (EventEmitter as new () => TypedEmitter<RunManag
     }
 
     //Begins to store the realtime run of uuid.
-    public initRunStorage(run: string | RealtimeRun) {
+    public beginRunStorage(run: string | RealtimeRun) {
         if (this.fileManager == null)
             throw new Error("Error starting run - no filemanager!");
 
@@ -69,11 +63,56 @@ export class RunManager extends (EventEmitter as new () => TypedEmitter<RunManag
         if (typeof run === "string")
             run = this.getRunById(run, RealtimeRun);
 
+        if (!run)
+            throw new Error("Couldn't resolve input run.");
         //const uuid = uuidv4(); //Select the new run's uuid.
 
-        const storedRun = this.fileManager.initRunStorage(run);
+        const storedRun = this.fileManager
+            .initRunStorage(uuidv4())
+            .link(run);
 
-        this.emit("run_init");
+        this.emit("run_change");
+    }
+
+    public stopRunStorage(run: string | StoredRun) {
+        if (this.fileManager == null)
+            throw new Error("Error starting run - no filemanager!");
+
+        //Resolve uuid to a run.
+        if (typeof run === "string")
+            run = this.getRunById(run, StoredRun);
+
+        if (!run)
+            throw new Error("Couldn't resolve input run.");
+
+        run.unlink();
+
+        this.emit("run_change");
+    }
+
+    public deleteStoredRun(run: string | StoredRun) {
+        if (this.fileManager == null)
+            throw new Error("Error starting run - no filemanager!");
+
+        //Resolve uuid to a run.
+        if (typeof run === "string")
+            run = this.getRunById(run, StoredRun);
+
+        if (!run)
+            throw new Error("Couldn't resolve input run.");
+
+        run.unlink().delete();
+
+        this.emit("run_change");
+    }
+
+    capabilities(): Capabilties {
+        return {
+            runTypes: {
+                realtime: !!this.moduleManager,
+                stored: !!this.fileManager
+            }
+        }
     }
 
 }

@@ -6,6 +6,7 @@
   "scripts": {
     "bench": "npx ts-node src/benchmarking/idlookup.bench.ts",
     "dev": "npx nodemon",
+    "run": "ts-node src/index.ts",
     "build": "tsc src"
   },
   "keywords": [],

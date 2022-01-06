@@ -14,13 +14,18 @@ export class ClientManager {
     constructor(runManager: RunManager, server: http.Server) {
         this.runManager = runManager;
 
-        this.io = new sio.Server(server);
+        this.io = new sio.Server(server, {
+            cors: {
+                origin: "*",
+                methods: ["GET", "POST"]
+            }
+        });
         this.io.on('connection', (socket: sio.Socket) => {
             this.agents.add(new ClientAgent(socket, this.runManager));
         });
 
-        this.runManager.on("run_init", () => {
+        this.runManager.on("run_change", () => {
             this.io.emit(CHANNELS.RUNS_LIST, this.runManager.runs())
-        })
+        });
     }
 }

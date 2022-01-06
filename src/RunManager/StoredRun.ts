@@ -1,6 +1,7 @@
 import * as Path from "path";
 import fs, {ensureFile, ensureFileSync, remove, removeSync, existsSync} from "fs-extra";
 import {RunHandle} from "./RunHandle";
+import {RealtimeRun} from "./RealtimeRun";
 
 export const paths = {
     lockFile: "lock",
@@ -8,18 +9,18 @@ export const paths = {
 }
 
 export class StoredRun extends RunHandle {
-    private rootPath: string;
+    private readonly rootPath: string;
     private isWriting: boolean;
     private _writeStream: fs.WriteStream | undefined;
+    private _destroyed: boolean = false;
 
     constructor(uuid: string, rootPath: string) {
-        super(uuid);
+        super("stored", uuid);
         this.rootPath = rootPath;
         this.isWriting = existsSync(this.resolve(paths.lockFile));
     }
 
     public init(): this {
-
         return this;
     }
 
@@ -39,6 +40,10 @@ export class StoredRun extends RunHandle {
         this._writeStream?.destroy();
 
         return this;
+    }
+
+    public locked(): boolean {
+        return this.isWriting;
     }
 
     public resolve(path: string): string {
@@ -84,5 +89,36 @@ export class StoredRun extends RunHandle {
 
     getHeader(): Uint8Array {
         return new Uint8Array([]);
+    }
+
+    //Links this stored run to a realtime run. It will write chunks from the realtime run until stopped.
+    link(run: RealtimeRun): this {
+        this.lockForWriting();
+
+        return this;
+    }
+
+    unlink(): this {
+        this.unlock();
+
+        return this;
+    }
+
+    destroyed(): boolean {
+        return this._destroyed;
+    }
+
+    delete(): this {
+        this.unlock();
+        fs.rmSync(this.rootPath, {recursive: true});
+        this._destroyed = true;
+        return this;
+    }
+
+    public toJSON() {
+        return {
+            ...super.toJSON(),
+            locked: this.locked()
+        }
     }
 }

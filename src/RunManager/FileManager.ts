@@ -1,7 +1,7 @@
 import {StoredRun} from "./StoredRun";
 import fs from "fs-extra"
 import * as Path from "path";
-import {v4 as uuidv4} from 'uuid';
+import {v4, v4 as uuidv4} from 'uuid';
 import {RealtimeRun} from "./RealtimeRun";
 
 export class FileManager {
@@ -21,6 +21,9 @@ export class FileManager {
 
     private async readRuns(): Promise<StoredRun[]> {
         //Returns read runs. Ignores directories with a `lock` file in them (those are being written)
+        if (!fs.existsSync(this.rootDir))
+            throw new Error(`Root directory >${this.rootDir}< doesn't exist!`);
+
         const runDirs = await fs.readdir(this.rootDir);
         this.runs = runDirs.map(dir => new StoredRun(dir, Path.resolve(this.rootDir, dir)));
         return this.runs;
@@ -34,12 +37,11 @@ export class FileManager {
         (await this.readRuns()).forEach(r => r.unlock());
     }
 
-    public initRunStorage(sourceRun: RealtimeRun): StoredRun {
-        const runFolder = this.resolve(sourceRun.uuid());
+    public initRunStorage(uuid: string): StoredRun {
+        const runFolder = this.resolve(uuid);
         fs.ensureDirSync(runFolder);
-        const run = new StoredRun(sourceRun.uuid(), runFolder)
+        const run = new StoredRun(uuid, runFolder)
             .init()
-            .lockForWriting();
 
         this.runs.push(run);
         return run;
