@@ -1,12 +1,13 @@
 import {RunManager} from "./RunManager/RunManager";
-import {FileManager} from "./RunManager/FileManager";
+import {RunFileManager} from "./RunManager/RunFileManager";
 import {ModuleManager} from "./ModuleManager/ModuleManager";
 import {FrontendManager} from "./FrontendManager/FrontendManager";
+import {DAQFileManager} from "./DAQFileManager";
 
 (async () => {
-    const fileManager = new FileManager("./testData");
+    const daqFileManager = new DAQFileManager("./testData", true);
     const moduleManager = new ModuleManager();
 
-    const runManager = new RunManager(fileManager, moduleManager);
+    const runManager = new RunManager(daqFileManager.runFileManager(), moduleManager);
     const frontendManager = new FrontendManager(runManager);
 })();

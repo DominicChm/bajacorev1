@@ -11,6 +11,6 @@ export class RealtimeRun extends RunHandle {
     }
 
     getHeader(): Uint8Array {
-        return new Uint8Array([]);
+        return new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     }
 }

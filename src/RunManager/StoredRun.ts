@@ -13,15 +13,12 @@ export class StoredRun extends RunHandle {
     private isWriting: boolean;
     private _writeStream: fs.WriteStream | undefined;
     private _destroyed: boolean = false;
+    private _size: number = 0;
 
     constructor(uuid: string, rootPath: string) {
         super("stored", uuid);
         this.rootPath = rootPath;
         this.isWriting = existsSync(this.resolve(paths.lockFile));
-    }
-
-    public init(): this {
-        return this;
     }
 
     public lockForWriting(): this {
@@ -94,6 +91,7 @@ export class StoredRun extends RunHandle {
     //Links this stored run to a realtime run. It will write chunks from the realtime run until stopped.
     link(run: RealtimeRun): this {
         this.lockForWriting();
+        this.writeData(run.getHeader());
 
         return this;
     }
@@ -115,10 +113,21 @@ export class StoredRun extends RunHandle {
         return this;
     }
 
+    size(): number {
+        if(this.destroyed())
+            return 0;
+
+        if ((this.isWriting || !this._size) && existsSync(this.dataPath())) //Only update size if actively writing or no previous size.
+            return this._size = fs.statSync(this.dataPath()).size;
+        else
+            return this._size;
+    }
+
     public toJSON() {
         return {
             ...super.toJSON(),
-            locked: this.locked()
+            locked: this.locked(),
+            size: this.size(),
         }
     }
 }

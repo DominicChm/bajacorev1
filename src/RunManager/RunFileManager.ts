@@ -3,12 +3,19 @@ import fs from "fs-extra"
 import * as Path from "path";
 import {v4, v4 as uuidv4} from 'uuid';
 import {RealtimeRun} from "./RealtimeRun";
+import EventEmitter from "events";
+import TypedEmitter from "typed-emitter";
 
-export class FileManager {
+interface RunManagerEvents {
+    run_change: () => void
+}
+
+export class RunFileManager extends (EventEmitter as new () => TypedEmitter<RunManagerEvents>) {
     private rootDir: string;
     private runs: StoredRun[] = [];
 
     constructor(rootDir: string) {
+        super();
         this.rootDir = Path.resolve(rootDir);
 
         this.setupRootDir()
@@ -40,15 +47,11 @@ export class FileManager {
     public initRunStorage(uuid: string): StoredRun {
         const runFolder = this.resolve(uuid);
         fs.ensureDirSync(runFolder);
-        const run = new StoredRun(uuid, runFolder)
-            .init()
+
+        const run = new StoredRun(uuid, runFolder);
 
         this.runs.push(run);
         return run;
-    }
-
-    deleteRunDirectory() {
-        throw new Error("UNIMPLEMENTED");
     }
 
     private resolve(path: string) {
