@@ -1,35 +1,42 @@
-import {ModuleTypeDefinition} from "daq-parse-libv2";
-import {Parser} from "binary-parser";
 import Joi from "joi";
-import {DAQModuleTypeDefinition} from "./interfaces/ModuleType";
+import * as ctypes from "c-type-util"
+import {ModuleType} from "./interfaces/ModuleType";
+import {CType} from "c-type-util";
 
-interface SBPRaw {
-    analogValue: number;
+interface SBPStorage {
+    analogRaw: number;
+}
+
+interface SBPMqtt {
+    analogRaw: number
 }
 
 interface SBPConverted {
     pressurePsi: number;
 }
 
+interface Api {
+    setOffset: number
+}
+
 interface SBPConfig {
 
 }
 
-export const SensorBrakePressure: DAQModuleTypeDefinition<SBPConfig, SBPConverted, SBPRaw> = {
-    encode(raw: SBPRaw, cfg, dv, offset: number): number {
-        dv.setUint16(offset, raw.analogValue, true);
-        return 2;
-    },
+export const SensorBrakePressure: ModuleType<SBPStorage, SBPMqtt, Api> = {
+    moduleTypename: "brake_pressure",
 
-    moduleTypeName: "brake_pressure",
+    configSchema: Joi.object({}),
 
-    cfgSchema: Joi.object({}),
+    storageStruct: ctypes.cStruct({
+        analogRaw: ctypes.uint16
+    }),
 
-    parser: new Parser()
-        .endianess("little")
-        .uint16("analogValue"),
+    mqttStruct: ctypes.cStruct({
+        analogRaw: ctypes.uint16
+    }),
 
-    convert: (rawData, config) => ({
-        pressurePsi: rawData.analogValue * 2
-    })
+    api: {
+        setOffset: {description: "Test - set offset", op: 0x03, ctype: ctypes.uint16},
+    }
 }

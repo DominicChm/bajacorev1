@@ -2,7 +2,7 @@ import {RunManager} from "./RunManager/RunManager";
 import {RunFileManager} from "./RunManager/RunFileManager";
 import {ModuleManager} from "./ModuleManager/ModuleManager";
 import {FrontendManager} from "./FrontendManager/FrontendManager";
-import {DAQFileManager} from "./DAQFileManager";
+import {DAQFileManager} from "./DAQFileManager/DAQFileManager";
 
 (async () => {
     const daqFileManager = new DAQFileManager("./testData", true);
