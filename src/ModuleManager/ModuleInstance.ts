@@ -21,6 +21,9 @@ interface ModuleInstanceEvents {
     data: (data: any) => void;
 }
 
+/**
+ * Base class for management and interaction with physical modules through MQTT, as well as their local config and data.
+ */
 export class ModuleInstance<StorageStruct, MqttStruct extends StorageStruct, ConfigT> extends (EventEmitter as new () => TypedEmitter<ModuleInstanceEvents>) {
     private readonly _definition: ModuleDefinition<ConfigT>;
     private readonly _moduleType: ModuleType<StorageStruct, MqttStruct, ConfigT>
@@ -29,7 +32,6 @@ export class ModuleInstance<StorageStruct, MqttStruct extends StorageStruct, Con
     private _definitionUpdated: boolean = false;
 
     public _watchedDefinition: ModuleDefinition<ConfigT>;
-
 
     constructor(moduleType: ModuleType<StorageStruct, MqttStruct, ConfigT>, moduleDefinition: ModuleDefinition<ConfigT>) {
         super();

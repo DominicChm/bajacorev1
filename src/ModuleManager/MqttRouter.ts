@@ -4,6 +4,10 @@ import {IPublishPacket} from "mqtt-packet";
 import {IClientPublishOptions} from "mqtt/types/lib/client-options";
 import {PacketCallback} from "mqtt/types/lib/client";
 
+/**
+ * Routes MQTT messages such that individual topics are subscribable.
+ * TODO: Wrap other eventemitter methods (off - need to unsub)
+ */
 export class MqttRouter extends EventEmitter {
     private readonly _mqtt: MqttClient;
 

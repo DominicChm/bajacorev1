@@ -10,6 +10,9 @@ export interface ModuleTypeOptions<StorageStruct,
     mqttStruct: CType<MqttStruct>,
 }
 
+/**
+ * Stores static properties of a given module type, like binary types, config schema, and typename.
+ */
 export class ModuleType<StorageStruct, MqttStruct extends StorageStruct, ConfigT> {
     private readonly _opts: ModuleTypeOptions<StorageStruct, MqttStruct, ConfigT>;
 
