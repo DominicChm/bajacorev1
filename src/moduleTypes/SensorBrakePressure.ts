@@ -5,7 +5,7 @@ import {cStruct, CType} from "c-type-util";
 import {ModuleInstance} from "../ModuleManager/ModuleInstance";
 import {ModuleDefinition} from "../ModuleManager/interfaces/ModuleDefinition";
 import {connect} from "mqtt"
-import {MqttRouter} from "../MqttRouter";
+import {MqttRouter} from "../ModuleManager/MqttRouter";
 
 export type StorageT = { test: number }
 export type MqttT = { test: number }

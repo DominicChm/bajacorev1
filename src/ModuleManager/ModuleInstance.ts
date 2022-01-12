@@ -2,7 +2,7 @@ import {ModuleType} from "./ModuleType";
 import {ModuleDefinition} from "./interfaces/ModuleDefinition";
 import {MqttClient} from "mqtt"
 import {standardizeMac} from "./MACUtil";
-import {MqttRouter} from "../MqttRouter";
+import {MqttRouter} from "./MqttRouter";
 import EventEmitter from "events";
 import TypedEmitter from "typed-emitter";
 
