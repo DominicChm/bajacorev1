@@ -13,7 +13,7 @@ export abstract class RunHandle {
         return this._uuid;
     }
 
-    public abstract getPlayStream(timestamp?: number, scale?: number): ReadableStream;
+    public abstract getPlayStream(timestamp?: number, scale?: number): any;
 
     public toJSON() {
         return {

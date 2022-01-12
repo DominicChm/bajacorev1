@@ -19,6 +19,9 @@ interface ModuleInstanceState {
 
 interface ModuleInstanceEvents {
     definition_updated: (definition: ModuleDefinition<any>) => void;
+
+    //Called when a parameter that requires a full reload is changed (like ID)
+    definition_updated_breaking: (definition: ModuleDefinition<any>) => void;
     raw_data: (data: Buffer) => void;
     data: (data: any) => void;
 }
@@ -112,18 +115,18 @@ export abstract class ModuleInstance<StorageStruct,
         return this;
     }
 
-    // public linkSocketIo(sioServer: Server): Namespace {
-    //     const namespace = this._namespace = sioServer.of(`/${this.id()}`);
-    //     namespace.on("connection", (socket => {
-    //         console.log(`SIO Connection to >${this.id()}<`);
-    //         socket.on(CHANNELS.SET_ID);
-    //         socket.on(CHANNELS.SET_DESCRIPTION);
-    //         socket.on(CHANNELS.SET_ID);
-    //         socket.on(CHANNELS.SET_ID);
-    //     }));
-    //
-    //     return namespace;
-    // }
+    public linkSocketIo(sioServer: Server): Namespace {
+        const namespace = this._namespace = sioServer.of(`/${this.id()}`);
+        namespace.on("connection", (socket => {
+            console.log(`SIO Connection to >${this.id()}<`);
+            socket.on(CHANNELS.SET_ID, this.setId.bind(this));
+            socket.on(CHANNELS.SET_DESCRIPTION, this.setDescription.bind(this));
+            socket.on(CHANNELS.SET_NAME, this.setName.bind(this));
+            socket.on(CHANNELS.SET_VERSION, this.setVersion.bind(this));
+        }));
+
+        return namespace;
+    }
 
     //TODO: Emit parse errors using eventemitter
     public handleRawInput(payload: Buffer): RawStruct {
@@ -137,6 +140,10 @@ export abstract class ModuleInstance<StorageStruct,
         console.log(data);
 
         return data;
+    }
+
+    definition() {
+        return JSON.parse(JSON.stringify(this._definition));
     }
 
     toJSON() {

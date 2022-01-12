@@ -6,8 +6,8 @@ export class RealtimeRun extends RunHandle {
         super("realtime", uuid);
     }
 
-    getPlayStream(timestamp?: number, scale?: number): ReadableStream {
-        return undefined as unknown as ReadableStream;
+    getPlayStream(timestamp?: number, scale?: number): any {
+        return undefined as unknown as any;
     }
 
     getHeader(): Uint8Array {
