@@ -2,7 +2,7 @@ import {ModuleDefinition} from "./ModuleDefinition";
 
 export interface DAQSchema {
     name: string
-    modules: ModuleDefinition[]
+    modules: ModuleDefinition<any>[]
 }
 
 export const defaultDAQSchema: DAQSchema = {

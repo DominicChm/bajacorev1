@@ -5,8 +5,10 @@ import {standardizeMac} from "./MACUtil";
 import {MqttRouter} from "./MqttRouter";
 import EventEmitter from "events";
 import TypedEmitter from "typed-emitter";
+import {merge} from "lodash"
 
 import onChange from 'on-change';
+import {Namespace, Server, Socket} from "socket.io";
 
 //TODO: Pass this as an arg?
 const baseModuleChannel = "car"
@@ -21,24 +23,33 @@ interface ModuleInstanceEvents {
     data: (data: any) => void;
 }
 
+export const CHANNELS = {
+    SET_DESCRIPTION: "set_desc",
+    SET_ID: "set_id",
+    SET_NAME: "set_name",
+    SET_VERSION: "set_version",
+}
+
 /**
  * Base class for management and interaction with physical modules through MQTT, as well as their local config and data.
  */
-export abstract class ModuleInstance<
-    StorageStruct,
-    MqttStruct extends StorageStruct,
+export abstract class ModuleInstance<StorageStruct,
+    RawStruct extends StorageStruct,
     ConfigT,
     HumanReadableStorageT,
     HumanReadableMqttT extends HumanReadableStorageT> extends (EventEmitter as new () => TypedEmitter<ModuleInstanceEvents>) {
+
     private readonly _definition: ModuleDefinition<ConfigT>;
-    private readonly _moduleType: ModuleType<StorageStruct, MqttStruct, ConfigT>
+    private readonly _moduleType: ModuleType<StorageStruct, RawStruct, ConfigT>
+    private _mqtt: MqttRouter | undefined;
+    private _namespace: Namespace | undefined;
     private _metaState: ModuleInstanceState;
-    private _data: MqttStruct | undefined;
+    private _data: RawStruct | undefined;
     private _definitionUpdated: boolean = false;
 
     public _watchedDefinition: ModuleDefinition<ConfigT>;
 
-    protected constructor(moduleType: ModuleType<StorageStruct, MqttStruct, ConfigT>, moduleDefinition: ModuleDefinition<ConfigT>) {
+    protected constructor(moduleType: ModuleType<StorageStruct, RawStruct, ConfigT>, moduleDefinition: ModuleDefinition<ConfigT>) {
         super();
         this._moduleType = moduleType;
         this._metaState = {
@@ -59,7 +70,7 @@ export abstract class ModuleInstance<
 
     protected abstract convertStored(data: StorageStruct): HumanReadableStorageT;
 
-    protected convertMqtt(data: MqttStruct): HumanReadableMqttT {
+    protected convertRaw(data: RawStruct): HumanReadableMqttT {
         return this.convertStored(data) as HumanReadableMqttT;
     }
 
@@ -72,8 +83,14 @@ export abstract class ModuleInstance<
         console.log('applyData:', applyData);
     }
 
-    public config() {
-        return this._watchedDefinition.config;
+    public config(): ConfigT {
+        return JSON.parse(JSON.stringify(this._definition.config));
+    }
+
+    public setConfig(cfg: Partial<ConfigT>): this {
+        const merged = merge(this.config(), cfg);
+        this._watchedDefinition.config = this._moduleType.validateConfig(merged);
+        return this;
     }
 
     public id() {
@@ -84,39 +101,62 @@ export abstract class ModuleInstance<
         return this._data;
     }
 
-    protected sendMQTT(channel: string, data: string | Uint8Array) {
-
-    }
-
     public channelPath(channel: string): string {
         return [baseModuleChannel, this.id(), channel].join("/");
     }
 
     public linkMQTT(mqtt: MqttRouter): this {
-        mqtt.on(this.channelPath("raw"), this.handleMqttRawInput.bind(this));
+        this._mqtt = mqtt;
+        this._mqtt.on(this.channelPath("raw"), this.handleRawInput.bind(this));
+
         return this;
     }
 
-    public linkSocketIo() {
-
-    }
+    // public linkSocketIo(sioServer: Server): Namespace {
+    //     const namespace = this._namespace = sioServer.of(`/${this.id()}`);
+    //     namespace.on("connection", (socket => {
+    //         console.log(`SIO Connection to >${this.id()}<`);
+    //         socket.on(CHANNELS.SET_ID);
+    //         socket.on(CHANNELS.SET_DESCRIPTION);
+    //         socket.on(CHANNELS.SET_ID);
+    //         socket.on(CHANNELS.SET_ID);
+    //     }));
+    //
+    //     return namespace;
+    // }
 
     //TODO: Emit parse errors using eventemitter
-    public handleMqttRawInput(payload: Buffer) {
-        console.log("MQTT INPUT :D");
+    public handleRawInput(payload: Buffer): RawStruct {
+        console.log("RAW INPUT :D");
         this.emit("raw_data", payload);
 
-        const data = this._moduleType.storageStruct().readLE(payload.buffer, payload.byteOffset);
+        const data = this._moduleType.rawStruct().readLE(payload.buffer, payload.byteOffset);
         this.emit("data", data);
 
         console.log(payload);
         console.log(data);
-    }
 
-    public unlinkMQTT() {
+        return data;
     }
 
     toJSON() {
         return this._definition; //When serializing, return the definition.
+    }
+
+    //TODO: API type/validity Checks
+    setId(id: string) {
+        this._watchedDefinition.id = id;
+    }
+
+    setName(name: string) {
+        this._watchedDefinition.name = name;
+    }
+
+    setDescription(description: string) {
+        this._watchedDefinition.description = description;
+    }
+
+    setVersion(version: number) {
+        this._watchedDefinition.version = version;
     }
 }

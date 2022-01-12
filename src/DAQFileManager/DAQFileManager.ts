@@ -1,7 +1,7 @@
 import {RunFileManager} from "../RunManager/RunFileManager";
 import Path from "path";
 import {ensureDirSync, existsSync, writeJsonSync} from "fs-extra";
-import {defaultDAQSchema} from "./interfaces/DAQSchema";
+import {defaultDAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 
 export const PATHS = {
     runData: "run-data",

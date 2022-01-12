@@ -2,12 +2,12 @@ import Joi from "joi";
 import ctypes, {CType} from "c-type-util"
 
 export interface ModuleTypeOptions<StorageStruct,
-    MqttStruct extends StorageStruct,
+    RawStruct extends StorageStruct,
     ConfigT> {
     typename: string;
     configSchema: Joi.ObjectSchema<ConfigT>;
     storageStruct: CType<StorageStruct>,
-    mqttStruct: CType<MqttStruct>,
+    rawStruct: CType<RawStruct>,
 }
 
 /**
@@ -35,7 +35,7 @@ export class ModuleType<StorageStruct, MqttStruct extends StorageStruct, ConfigT
         return this._opts.storageStruct
     }
 
-    public mqttStruct(): CType<MqttStruct> {
-        return this._opts.mqttStruct
+    public rawStruct(): CType<MqttStruct> {
+        return this._opts.rawStruct
     }
 }

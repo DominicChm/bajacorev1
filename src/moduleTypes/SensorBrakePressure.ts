@@ -12,12 +12,13 @@ export type MqttT = { analogRaw: number }
 export type ConfigT = { config_v: number }
 export type HumanReadableT = { psi: number }
 export type HumanReadableStorageT = { psi: number }
+
 const t = new ModuleType<StorageT, MqttT, ConfigT>({
     typename: "brake_pressure",
     configSchema: Joi.object({
         config_v: Joi.number()
     }),
-    mqttStruct: cStruct({analogRaw: ctypes.uint16}),
+    rawStruct: cStruct({analogRaw: ctypes.uint16}),
     storageStruct: cStruct({analogRaw: ctypes.uint16}),
 });
 
@@ -33,9 +34,9 @@ export class SensorBrakePressureInstance extends ModuleInstance<StorageT, MqttT,
     }
 
     //Can override if additional data needs to be converted with MQTT packets
-    protected convertMqtt(data: MqttT): HumanReadableStorageT {
-        return this.convertStored(data);
-    }
+    // protected convertMqtt(data: MqttT): HumanReadableStorageT {
+    //     return this.convertStored(data);
+    // }
 
     //Define API Here
 
@@ -43,21 +44,3 @@ export class SensorBrakePressureInstance extends ModuleInstance<StorageT, MqttT,
 }
 
 export default {type: t, instance: SensorBrakePressureInstance}
-
-const client = connect("mqtt://localhost:1883");
-const router = new MqttRouter(client);
-
-client.on('connect', function () {
-    console.log("Connected!");
-    const test = new SensorBrakePressureInstance({
-        id: "AB:CD:EF:11:22:12",
-        config: {
-            config_v: 1
-        },
-        version: 1,
-        name: "brake",
-        description: "testdesc"
-    }).linkMQTT(router);
-})
-
-console.log("Connecting instance")
