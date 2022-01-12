@@ -24,7 +24,12 @@ interface ModuleInstanceEvents {
 /**
  * Base class for management and interaction with physical modules through MQTT, as well as their local config and data.
  */
-export class ModuleInstance<StorageStruct, MqttStruct extends StorageStruct, ConfigT> extends (EventEmitter as new () => TypedEmitter<ModuleInstanceEvents>) {
+export abstract class ModuleInstance<
+    StorageStruct,
+    MqttStruct extends StorageStruct,
+    ConfigT,
+    HumanReadableStorageT,
+    HumanReadableMqttT extends HumanReadableStorageT> extends (EventEmitter as new () => TypedEmitter<ModuleInstanceEvents>) {
     private readonly _definition: ModuleDefinition<ConfigT>;
     private readonly _moduleType: ModuleType<StorageStruct, MqttStruct, ConfigT>
     private _metaState: ModuleInstanceState;
@@ -33,7 +38,7 @@ export class ModuleInstance<StorageStruct, MqttStruct extends StorageStruct, Con
 
     public _watchedDefinition: ModuleDefinition<ConfigT>;
 
-    constructor(moduleType: ModuleType<StorageStruct, MqttStruct, ConfigT>, moduleDefinition: ModuleDefinition<ConfigT>) {
+    protected constructor(moduleType: ModuleType<StorageStruct, MqttStruct, ConfigT>, moduleDefinition: ModuleDefinition<ConfigT>) {
         super();
         this._moduleType = moduleType;
         this._metaState = {
@@ -50,6 +55,12 @@ export class ModuleInstance<StorageStruct, MqttStruct extends StorageStruct, Con
 
         //Setup public definition
         this._watchedDefinition = onChange(this._definition, this.handleDefinitionChange.bind(this));
+    }
+
+    protected abstract convertStored(data: StorageStruct): HumanReadableStorageT;
+
+    protected convertMqtt(data: MqttStruct): HumanReadableMqttT {
+        return this.convertStored(data) as HumanReadableMqttT;
     }
 
     private handleDefinitionChange(path: string, value: unknown, previousValue: unknown, applyData: any) {
