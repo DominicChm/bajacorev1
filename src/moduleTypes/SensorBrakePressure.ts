@@ -1,58 +1,50 @@
 import Joi from "joi";
 import * as ctypes from "c-type-util"
-import {ModuleType} from "./ModuleType";
+import {ModuleType} from "../ModuleManager/ModuleType";
 import {cStruct, CType} from "c-type-util";
-import {ModuleInstance} from "./ModuleInstance";
+import {ModuleInstance} from "../ModuleManager/ModuleInstance";
+import {ModuleDefinition} from "../ModuleManager/interfaces/ModuleDefinition";
+import {connect} from "mqtt"
+import {MqttRouter} from "../MqttRouter";
 
-interface SBPStorage {
-    analogRaw: number;
-}
-
-interface SBPMqtt {
-    analogRaw: number
-}
-
-interface SBPConverted {
-    pressurePsi: number;
-}
-
-interface Api {
-    setOffset: number
-}
-
-interface SBPConfig {
-
-}
-
-// export const SensorBrakePressure: ModuleType<SBPStorage, SBPMqtt, Api> = {
-//     moduleTypename: "brake_pressure",
-//
-//     configSchema: Joi.object({}),
-//
-//     storageStruct: ctypes.cStruct({
-//         analogRaw: ctypes.uint16
-//     }),
-//
-//     mqttStruct: ctypes.cStruct({
-//         analogRaw: ctypes.uint16
-//     }),
-//
-//     api: {
-//         setOffset: {description: "Test - set offset", op: 0x03, ctype: ctypes.uint16},
-//     }
-// }
 export type StorageT = { test: number }
 export type MqttT = { test: number }
 export type ConfigT = { config_v: number }
 
-export class SensorBrakePressureInstance extends ModuleInstance<StorageT, MqttT, ConfigT>{
-
-}
-export const SensorBrakePressure = new ModuleType<StorageT, MqttT, ConfigT, SensorBrakePressureInstance>({
+const t = new ModuleType<StorageT, MqttT, ConfigT>({
     typename: "brake_pressure",
-    configSchema: Joi.object({}),
+    configSchema: Joi.object({
+        config_v: Joi.number()
+    }),
     mqttStruct: cStruct({test: ctypes.uint16}),
     storageStruct: cStruct({test: ctypes.uint16}),
-    instance: SensorBrakePressureInstance
 });
 
+export class SensorBrakePressureInstance extends ModuleInstance<StorageT, MqttT, ConfigT> {
+    constructor(def: ModuleDefinition<ConfigT>) {
+        super(t, def);
+    }
+
+    //Define API Here
+
+}
+
+export default {type: t, instance: SensorBrakePressureInstance}
+
+const client = connect("mqtt://localhost:1883");
+const router = new MqttRouter(client);
+
+client.on('connect', function () {
+    console.log("Connected!");
+    const test = new SensorBrakePressureInstance({
+        id: "AB:CD:EF:11:22:12",
+        config: {
+            config_v: 1
+        },
+        version: 1,
+        name: "brake",
+        description: "testdesc"
+    }).linkMQTT(router);
+})
+
+console.log("Connecting instance")

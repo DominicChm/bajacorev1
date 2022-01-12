@@ -11,7 +11,7 @@ export const PATHS = {
 export class DAQFileManager {
     private readonly _runFileManager: RunFileManager | undefined;
     private readonly rootDir: string;
-\
+
     constructor(rootDir: string, createRunManager: boolean) {
         this.rootDir = Path.resolve(rootDir);
 

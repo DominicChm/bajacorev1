@@ -41,12 +41,30 @@ export function mac2buf(string: string) {
 }
 
 export function standardizeMac(mac: string) {
+    if (mac == null)
+        throw new Error("Passed MAC is undefined!");
+
+    if (typeof mac !== "string")
+        throw new Error(`Passed MAC >${mac}< is not a string!`);
+
+    if (mac.length <= 0)
+        throw new Error(`Passed MAC length is 0!`);
+
+    mac = mac.toUpperCase();
+
+    if (!/^[ABCDEF\d:\-.]+$/.test(mac)) //Test for invalid characters
+        throw new Error(`Invalid characters encountered in MAC >${mac}<. Allowed chars are 0-9, ABCDEF`);
+
     const parts = mac
-        .replace(/[\W_]+/g, '')
-        .match(/(.{2})/g);
+        .toUpperCase()
+        .replace(/[\W_]+/g, '') //Replace delimiters
+        .match(/(.{2})/g); //Split into two-char parts.
 
     if (!parts)
-        throw new Error("Couldn't generate formatted MAC parts");
+        throw new Error(`Couldn't generate formatted MAC from >${mac}<`);
+
+    if (parts.length !== 6)
+        throw new Error(`Couldn't standardize MAC >${mac}< - Got >${parts.length}< parts, expected 6)`);
 
     return parts.join(":");
 }
