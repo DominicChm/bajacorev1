@@ -1,9 +1,10 @@
 import {RunHandle} from "./RunHandle";
 import {Stream} from "stream";
+import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 
 export class RealtimeRun extends RunHandle {
-    constructor(uuid: string) {
-        super("realtime", uuid);
+    constructor(uuid: string, schema: DAQSchema | undefined) {
+        super("realtime", uuid, schema);
     }
 
     getPlayStream(timestamp?: number, scale?: number): any {

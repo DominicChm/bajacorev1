@@ -1,9 +1,11 @@
 import {RunManager} from "../RunManager/RunManager";
 import * as sio from "socket.io"
 import {CHANNELS} from "./SIOChannels";
+import {RunHandle} from "../RunManager/RunHandle";
 
 export class ClientAgent {
     private io: sio.Socket;
+    private activeRun: RunHandle | undefined;
     private runManager: RunManager;
 
     constructor(io: sio.Socket, rm: RunManager) {
@@ -16,8 +18,7 @@ export class ClientAgent {
         io.on(CHANNELS.RUN_HEADER_REQUEST, this.handleRunHeaderRequest.bind(this));
         io.on(CHANNELS.RUN_STOP_REQUEST, this.handleRunStopRequest.bind(this));
         io.on(CHANNELS.RUN_DELETE_REQUEST, this.handleRunDeleteRequest.bind(this));
-
-
+        io.on("activate_run", this.handleActivateRunRequest.bind(this));
         this.initClient();
     }
 
@@ -29,9 +30,19 @@ export class ClientAgent {
         this.io.emit(CHANNELS.CAPABILITIES, this.runManager.capabilities());
     }
 
+    updateClientSchema() {
+        this.io.emit("schema", this.runManager.moduleManager()?.schema())
+    }
+
     handleFrameRequest(uuid: string, timestamp: number) {
         console.log("DATA FRAME!!");
         this.io.emit(CHANNELS.DATA_FRAME, "TEST FRAME :DDD");
+    }
+
+    handleActivateRunRequest(uuid: string) {
+        this.activeRun = this.runManager.getRunById(uuid);
+
+        this.io.emit("run_schema", this.activeRun?.schema());
     }
 
     handlePlayRequest() {

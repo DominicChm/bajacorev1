@@ -2,12 +2,28 @@ import * as Path from "path";
 import fs, {ensureFile, ensureFileSync, remove, removeSync, existsSync} from "fs-extra";
 import {RunHandle} from "./RunHandle";
 import {RealtimeRun} from "./RealtimeRun";
+import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 
 export const paths = {
     lockFile: "lock",
     data: "data.daq",
 }
 
+const testSchema: DAQSchema = {
+    name: "Schema",
+    modules: [
+        {
+            name: "Brake Pressure",
+            id: "AA:BB:CC:DD:EE:FF",
+            description: "Test brake pressure sensor",
+            version: 0,
+            type: "brake_pressure",
+            config: {
+                config_v: 1
+            }
+        }
+    ]
+}
 export class StoredRun extends RunHandle {
     private readonly rootPath: string;
     private isWriting: boolean;
@@ -16,7 +32,8 @@ export class StoredRun extends RunHandle {
     private _size: number = 0;
 
     constructor(uuid: string, rootPath: string) {
-        super("stored", uuid);
+        //TODO: Read stored schema!
+        super("stored", uuid, testSchema);
         this.rootPath = rootPath;
         this.isWriting = existsSync(this.resolve(paths.lockFile));
     }
@@ -80,8 +97,8 @@ export class StoredRun extends RunHandle {
         return this.resolve(paths.lockFile);
     }
 
-    getPlayStream(timestamp?: number, scale?: number): ReadableStream {
-        return undefined as unknown as ReadableStream;
+    getPlayStream(timestamp?: number, scale?: number): any {
+        return undefined as unknown as any;
     }
 
     getHeader(): Uint8Array {

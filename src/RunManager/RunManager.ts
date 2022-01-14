@@ -19,35 +19,35 @@ interface RunManagerEvents {
  * Central component for creating, removing, reading, and storing runs.
  */
 export class RunManager extends (EventEmitter as new () => TypedEmitter<RunManagerEvents>) {
-    private fileManager: RunFileManager | undefined;
-    private moduleManager: ModuleManager | undefined;
+    private _fileManager: RunFileManager | undefined;
+    private _moduleManager: ModuleManager | undefined;
     private _runs: RunHandle[] = [];
 
     constructor(fileManager?: RunFileManager | null, moduleManager?: ModuleManager | null) {
         super();
-        this.fileManager = fileManager ?? undefined;
-        this.fileManager?.on("run_change", () => this.emit("run_change"))
+        this._fileManager = fileManager ?? undefined;
+        this._fileManager?.on("run_change", () => this.emit("run_change"))
 
-        this.moduleManager = moduleManager ?? undefined;
+        this._moduleManager = moduleManager ?? undefined;
     }
 
     //Helper function to guard filemanager-reliant functions
     private checkFM(): RunFileManager {
-        if (this.fileManager == null)
+        if (this._fileManager == null)
             throw new Error("Error - no filemanager!");
 
-        return this.fileManager;
+        return this._fileManager;
     }
 
     public runs(): RunHandle[] {
         //Return all run objects
         this._runs = [];
 
-        if (this.fileManager)
-            this._runs = this._runs.concat(this.fileManager.getRuns());
+        if (this._fileManager)
+            this._runs = this._runs.concat(this._fileManager.getRuns());
 
-        if (this.moduleManager)
-            this._runs = this._runs.concat(this.moduleManager.getRuns());
+        if (this._moduleManager)
+            this._runs = this._runs.concat(this._moduleManager.getRuns());
 
         //Filter destroyed runs.
         this._runs = this._runs.filter(r => !(r instanceof StoredRun && r.destroyed()));
@@ -85,7 +85,7 @@ export class RunManager extends (EventEmitter as new () => TypedEmitter<RunManag
     }
 
     public deleteStoredRun(run: string | StoredRun) {
-        if (this.fileManager == null)
+        if (this._fileManager == null)
             throw new Error("Error starting run - no filemanager!");
 
         //Resolve uuid to a run.
@@ -100,11 +100,19 @@ export class RunManager extends (EventEmitter as new () => TypedEmitter<RunManag
         this.emit("run_change");
     }
 
+    public fileManager() {
+        return this._fileManager;
+    }
+
+    public moduleManager() {
+        return this._moduleManager;
+    }
+
     capabilities(): Capabilties {
         return {
             runTypes: {
-                realtime: !!this.moduleManager,
-                stored: !!this.fileManager
+                realtime: !!this._moduleManager,
+                stored: !!this._fileManager
             }
         }
     }
