@@ -104,29 +104,29 @@ export abstract class ModuleInstance<StorageStruct,
         return this._data;
     }
 
-    public channelPath(channel: string): string {
-        return [baseModuleChannel, this.id(), channel].join("/");
-    }
+    // public channelPath(channel: string): string {
+    //     return [baseModuleChannel, this.id(), channel].join("/");
+    // }
 
-    public linkMQTT(mqtt: MqttRouter): this {
-        this._mqtt = mqtt;
-        this._mqtt.on(this.channelPath("raw"), this.handleRawInput.bind(this));
-
-        return this;
-    }
-
-    public linkSocketIo(sioServer: Server): Namespace {
-        const namespace = this._namespace = sioServer.of(`/${this.id()}`);
-        namespace.on("connection", (socket => {
-            console.log(`SIO Connection to >${this.id()}<`);
-            socket.on(CHANNELS.SET_ID, this.setId.bind(this));
-            socket.on(CHANNELS.SET_DESCRIPTION, this.setDescription.bind(this));
-            socket.on(CHANNELS.SET_NAME, this.setName.bind(this));
-            socket.on(CHANNELS.SET_VERSION, this.setVersion.bind(this));
-        }));
-
-        return namespace;
-    }
+    // public linkMQTT(mqtt: MqttRouter): this {
+    //     this._mqtt = mqtt;
+    //     this._mqtt.on(this.channelPath("raw"), this.handleRawInput.bind(this));
+    //
+    //     return this;
+    // }
+    //
+    // public linkSocketIo(sioServer: Server): Namespace {
+    //     const namespace = this._namespace = sioServer.of(`/${this.id()}`);
+    //     namespace.on("connection", (socket => {
+    //         console.log(`SIO Connection to >${this.id()}<`);
+    //         socket.on(CHANNELS.SET_ID, this.setId.bind(this));
+    //         socket.on(CHANNELS.SET_DESCRIPTION, this.setDescription.bind(this));
+    //         socket.on(CHANNELS.SET_NAME, this.setName.bind(this));
+    //         socket.on(CHANNELS.SET_VERSION, this.setVersion.bind(this));
+    //     }));
+    //
+    //     return namespace;
+    // }
 
     //TODO: Emit parse errors using eventemitter
     public handleRawInput(payload: Buffer): RawStruct {

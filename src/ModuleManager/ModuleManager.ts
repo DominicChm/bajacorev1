@@ -9,6 +9,7 @@ import {connect, MqttClient} from "mqtt";
 import {MqttRouter} from "./MqttRouter";
 import {standardizeMac} from "./MACUtil";
 import EventEmitter from "events";
+import TypedEmitter from "typed-emitter";
 
 export interface ModuleManagerOptions {
     mqttUrl: string,
@@ -20,7 +21,15 @@ export interface ModuleTypePair {
     instance: Newable<ModuleInstance<any, any, any, any, any>>
 }
 
-export class ModuleManager extends EventEmitter {
+interface ModuleManagerEvents {
+    schema_load: (schema: DAQSchema, run: RealtimeRun) => void;
+    schema_updated: (schema: DAQSchema) => void;
+    schema_unload: () => void;
+    //schema_patched: (schema: Partial<DAQSchema>) => void;
+}
+
+
+export class ModuleManager extends (EventEmitter as new () => TypedEmitter<ModuleManagerEvents>) {
     //Links to MQTT and handles status and data aggregation and encoding
     private _opts: ModuleManagerOptions;
     private _moduleInstances: ModuleInstance<any, any, any, any, any>[] = [];
@@ -59,16 +68,28 @@ export class ModuleManager extends EventEmitter {
 
         this._run.setSchema(this._schema);
 
-        for (const i of this._moduleInstances) {
-            i.linkMQTT(this._router);
-        }
+        this._moduleInstances.forEach(this.linkInstanceMqtt.bind(this));
 
-        this.emitSchemaUpdated();
+        //this.emitSchemaUpdated();
+        this.emit("schema_load", this.schema() as DAQSchema, this._run);
         return this;
     }
 
+    unloadSchema() {
+        if (!this._schema)
+            return;
+
+        this._router.removeAllListeners();
+        this.emit("schema_unload");
+    }
+
     emitSchemaUpdated() {
-        this.emit("schema_updated", this.schema());
+        this.emit("schema_updated", this.schema() as DAQSchema);
+    }
+
+    //TODO: Types
+    linkInstanceMqtt(instance: any) {
+        this._router.on(`car/${instance.id()}/raw`, instance.handleRawInput.bind(instance));
     }
 
     schema() {

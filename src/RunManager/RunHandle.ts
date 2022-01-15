@@ -1,11 +1,21 @@
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
+import {RealtimeRun} from "./RealtimeRun";
+import EventEmitter from "events";
+import TypedEmitter from "typed-emitter";
 
-export abstract class RunHandle {
+interface RunEvents {
+    destroyed: () => void;
+    //schema_patched: (schema: Partial<DAQSchema>) => void;
+}
+
+
+export abstract class RunHandle extends (EventEmitter as new () => TypedEmitter<RunEvents>){
     private readonly _uuid;
     private readonly _runType;
     private _schema: DAQSchema | undefined;
 
-    constructor(runType: string, uuid: string, schema: DAQSchema | undefined) {
+    protected constructor(runType: string, uuid: string, schema: DAQSchema | undefined) {
+        super();
         this._uuid = uuid;
         this._runType = runType;
         this._schema = schema;
