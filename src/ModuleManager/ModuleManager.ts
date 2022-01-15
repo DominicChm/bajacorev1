@@ -113,29 +113,29 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
 
     }
 }
-
-const testSchema: DAQSchema = {
-    name: "Schema",
-    modules: [
-        {
-            name: "Brake Pressure",
-            id: "AA:BB:CC:DD:EE:FF",
-            description: "Test brake pressure sensor",
-            version: 0,
-            type: "brake_pressure",
-            config: {
-                config_v: 1
-            }
-        }
-    ]
-}
-
-const mm = new ModuleManager({
-    moduleTypes: [SensorBrakePressure],
-    mqttUrl: "mqtt://localhost:1883"
-}).loadSchema(testSchema);
-
-setInterval(() => {
-    const i = mm.instance("aa.bb.cc.dd.ee.ff");
-    i.printMessage("test");
-}, 1000);
+//
+// const testSchema: DAQSchema = {
+//     name: "Schema",
+//     modules: [
+//         {
+//             name: "Brake Pressure",
+//             id: "AA:BB:CC:DD:EE:FF",
+//             description: "Test brake pressure sensor",
+//             version: 0,
+//             type: "brake_pressure",
+//             config: {
+//                 config_v: 1
+//             }
+//         }
+//     ]
+// }
+//
+// const mm = new ModuleManager({
+//     moduleTypes: [SensorBrakePressure],
+//     mqttUrl: "mqtt://localhost:1883"
+// }).loadSchema(testSchema);
+//
+// setInterval(() => {
+//     const i = mm.instance("aa.bb.cc.dd.ee.ff");
+//     i.printMessage("test");
+// }, 1000);

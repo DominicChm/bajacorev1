@@ -24,6 +24,7 @@ const testSchema: DAQSchema = {
         }
     ]
 }
+
 export class StoredRun extends RunHandle {
     private readonly rootPath: string;
     private isWriting: boolean;
@@ -107,6 +108,9 @@ export class StoredRun extends RunHandle {
 
     //Links this stored run to a realtime run. It will write chunks from the realtime run until stopped.
     link(run: RealtimeRun): this {
+        if(!run)
+            throw new Error("Link failed - Run doesn't exist!");
+
         this.lockForWriting();
         this.writeData(run.getHeader());
 

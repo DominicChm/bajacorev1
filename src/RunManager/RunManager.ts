@@ -11,7 +11,7 @@ import {Capabilties} from "./interfaces/capabilties";
 export type Newable<T> = { new(...args: any[]): T; };
 
 interface RunManagerEvents {
-    run_change: () => void
+    run_change: (runs: RunHandle[]) => void
 }
 
 /**
@@ -26,9 +26,13 @@ export class RunManager extends (EventEmitter as new () => TypedEmitter<RunManag
     constructor(fileManager?: RunFileManager | null, moduleManager?: ModuleManager | null) {
         super();
         this._fileManager = fileManager ?? undefined;
-        this._fileManager?.on("run_change", () => this.emit("run_change"))
+        this._fileManager?.on("run_change", this.emitRunsChange.bind(this));
 
         this._moduleManager = moduleManager ?? undefined;
+    }
+
+    private emitRunsChange() {
+        this.emit("run_change", this.runs());
     }
 
     //Helper function to guard filemanager-reliant functions
@@ -54,50 +58,46 @@ export class RunManager extends (EventEmitter as new () => TypedEmitter<RunManag
         return this._runs;
     }
 
-    public getRunById<T extends RunHandle>(uuid: string, runType?: Newable<T>): T {
+    public getRunById<T extends RunHandle>(uuid: string, runType?: Newable<T>): T | undefined {
         //Return the run object with the given ID. Throws if not found
         const run = this.runs().find(run => run.uuid() === uuid && (!runType || run instanceof runType));
-
-        if (!run)
-            throw new Error(`No run could be found with ID >${uuid}<`);
-
         return run as T;
     }
 
     public resolveRun<T extends RunHandle>(run: string | T): T {
+        let r: string | T | undefined = run;
+
         if (typeof run === "string")
-            return this.getRunById(run)
-        return run;
+            r = this.getRunById<T>(run);
+
+        if (!r)
+            throw new Error(`No run could be found with ID >${run}<`);
+
+        return r as T;
     }
 
     //Begins to store the realtime run of uuid.
     public beginRunStorage(run: string | RealtimeRun) {
         const fm = this.checkFM()
-
         fm.initRunStorage(uuidv4()).link(this.resolveRun(run));
 
-        this.emit("run_change");
+        this.emitRunsChange();
     }
 
     public stopRunStorage(run: string | StoredRun) {
         this.resolveRun(run).unlink();
-        this.emit("run_change");
+        this.emitRunsChange();
     }
 
     public deleteStoredRun(run: string | StoredRun) {
         if (this._fileManager == null)
             throw new Error("Error starting run - no filemanager!");
 
-        //Resolve uuid to a run.
-        if (typeof run === "string")
-            run = this.getRunById(run, StoredRun);
-
-        if (!run)
-            throw new Error("Couldn't resolve input run.");
+        run = this.resolveRun(run);
 
         run.unlink().delete();
 
-        this.emit("run_change");
+        this.emitRunsChange();
     }
 
     public fileManager() {

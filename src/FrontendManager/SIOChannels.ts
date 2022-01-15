@@ -9,8 +9,12 @@ export const CHANNELS = {
     RUN_INIT_REQUEST: "run_init",
     RUN_DELETE_REQUEST: "run_delete",
 
+    CLIENT_STATE: "client_state",
 
     GENERAL_ERROR: "general_error",
+
+    ACTIVATE_RUN: "activate_run",
+    DEACTIVATE_RUN: "deactivate_run",
 
     CAPABILITIES: "capabilities"
 }

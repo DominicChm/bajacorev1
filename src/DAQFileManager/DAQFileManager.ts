@@ -18,7 +18,7 @@ export class DAQFileManager {
         ensureDirSync(this.resolve(PATHS.runData));
 
         if (!existsSync(this.resolve(PATHS.schema)))
-            writeJsonSync(PATHS.schema, defaultDAQSchema);
+            writeJsonSync(this.resolve(PATHS.schema), defaultDAQSchema);
 
         if (createRunManager)
             this._runFileManager = new RunFileManager(this.resolve(PATHS.runData));

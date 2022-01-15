@@ -40,16 +40,6 @@ export class SensorBrakePressureInstance extends ModuleInstance<StorageT, MqttT,
     // }
 
     //Define API Here
-
-    linkSocketIo(sioServer: Server): Namespace {
-        const ns = super.linkSocketIo(sioServer);
-        ns.on("connection", (socket => {
-            socket.on("print", this.printMessage.bind(this));
-        }));
-
-        return ns;
-    }
-
     private printMessage(msg: string) {
         console.log(msg);
     }
