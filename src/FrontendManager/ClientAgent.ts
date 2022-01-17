@@ -72,7 +72,7 @@ export class ClientAgent {
         this.clientState().runs = this.runManager.runs();
 
         const ar = this.clientState().activeRun;
-        if(ar && !this.runManager.getRunById(ar))
+        if (ar && !this.runManager.getRunById(ar))
             this.deactivateRun();
     }
 
@@ -92,22 +92,22 @@ export class ClientAgent {
         this._clientState.activeRun = uuid;
         this._clientState.schema = run.schema();
 
-        const listener = this.wh(this.deactivateRun);
+        const destroyListener = this.wh(this.deactivateRun);
 
-        if(run instanceof RealtimeRun) {
-            //run.on()
+        const replaceListener = (replacementUUID: string) => {
+            this.activateRun(replacementUUID);
         }
 
         this.deactivateRun = () => {
             this._clientState.activeRun = null;
             this._clientState.schema = null;
-            run.off("destroyed", listener);
+            run.off("destroyed", destroyListener);
+            run.off("replaced", replaceListener);
 
-            if(run instanceof RealtimeRun) {
-
-            }
         }
-        run.on("destroyed", listener);
+        run.on("destroyed", destroyListener);
+        run.on("replaced", replaceListener);
+
     }
 
     deactivateRun() {

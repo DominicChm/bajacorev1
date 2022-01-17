@@ -4,7 +4,6 @@ import {ModuleInstance} from "./ModuleInstance";
 import {ModuleType} from "./ModuleType";
 import {Newable} from "../RunManager/RunManager";
 import {DAQSchema} from "./interfaces/DAQSchema";
-import SensorBrakePressure from "../moduleTypes/SensorBrakePressure";
 import {connect, MqttClient} from "mqtt";
 import {MqttRouter} from "./MqttRouter";
 import {standardizeMac} from "./MACUtil";
@@ -35,12 +34,11 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
     private _moduleInstances: ModuleInstance<any, any, any, any, any>[] = [];
     private readonly _mqtt: MqttClient
     private readonly _router: MqttRouter;
-    private readonly _run: RealtimeRun;
+    private _run: RealtimeRun | undefined;
     private _schema: DAQSchema | undefined;
 
     constructor(opts: ModuleManagerOptions) {
         super();
-        this._run = new RealtimeRun(v4(), undefined);
         this._opts = opts;
         this._mqtt = connect(opts.mqttUrl);
         this._router = new MqttRouter(this._mqtt);
@@ -51,39 +49,51 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
     }
 
     loadSchema(schema: DAQSchema): this {
+        //Unload a schema before loading a new one.
+        if (this._schema)
+            this.unloadSchema(false);
+
         //console.log(schema)
         const updatedModules = schema.modules.map(m => {
             const mType = this.moduleTypes().find(t => t.type.typename() === m.type);
             if (!mType) throw new Error(`Couldn't find module with typename >${m.type}<`);
 
             const instance = new mType.instance(m);
-
+            this.linkInstanceMqtt(instance);
             this._moduleInstances.push(instance);
-            instance.on("definition_updated", this.emitSchemaUpdated.bind(this));
+
+            instance.on("definition_updated", this.handleInstanceConfigMutation.bind(this));
 
             return instance.definition();
         });
 
         this._schema = {...schema, modules: updatedModules};
 
-        this._run.setSchema(this._schema);
-
-        this._moduleInstances.forEach(this.linkInstanceMqtt.bind(this));
+        //Setup new Run
+        const newRun = new RealtimeRun(v4(), this.schema());
+        this._run?.replace(newRun.uuid());
+        this._run = newRun;
 
         //this.emitSchemaUpdated();
         this.emit("schema_load", this.schema() as DAQSchema, this._run);
         return this;
     }
 
-    unloadSchema() {
+    unloadSchema(destroyRun = true) {
         if (!this._schema)
             return;
 
         this._router.removeAllListeners();
+
+        if(destroyRun) {
+            this._run?.destroy();
+            this._run = undefined;
+        }
+
         this.emit("schema_unload");
     }
 
-    emitSchemaUpdated() {
+    handleInstanceConfigMutation() {
         this.emit("schema_updated", this.schema() as DAQSchema);
     }
 
@@ -97,7 +107,10 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
     }
 
     getRuns(): RealtimeRun[] {
-        return [this._run];
+        if (this._run)
+            return [this._run];
+
+        return [];
     }
 
     instance(id: string): any | undefined {
@@ -113,6 +126,7 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
 
     }
 }
+
 //
 // const testSchema: DAQSchema = {
 //     name: "Schema",

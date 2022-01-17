@@ -29,7 +29,6 @@ export class StoredRun extends RunHandle {
     private readonly rootPath: string;
     private isWriting: boolean;
     private _writeStream: fs.WriteStream | undefined;
-    private _destroyed: boolean = false;
     private _size: number = 0;
 
     constructor(uuid: string, rootPath: string) {
@@ -119,18 +118,13 @@ export class StoredRun extends RunHandle {
 
     unlink(): this {
         this.unlock();
-
         return this;
-    }
-
-    destroyed(): boolean {
-        return this._destroyed;
     }
 
     delete(): this {
         this.unlock();
         fs.rmSync(this.rootPath, {recursive: true});
-        this._destroyed = true;
+        this.destroy();
         return this;
     }
 
@@ -150,5 +144,11 @@ export class StoredRun extends RunHandle {
             locked: this.locked(),
             size: this.size(),
         }
+    }
+
+    destroy() {
+        this.unlink();
+        super.destroy();
+
     }
 }
