@@ -1,6 +1,6 @@
 import {RealtimeRun} from "../RunManager/RealtimeRun";
 import {v4} from "uuid"
-import {ModuleInstance} from "./ModuleInstance";
+import {AnyModuleInstance, ModuleInstance} from "./ModuleInstance";
 import {ModuleType} from "./ModuleType";
 import {Newable} from "../RunManager/RunManager";
 import {DAQSchema} from "./interfaces/DAQSchema";
@@ -9,10 +9,11 @@ import {MqttRouter} from "./MqttRouter";
 import {standardizeMac} from "./MACUtil";
 import EventEmitter from "events";
 import TypedEmitter from "typed-emitter";
+import {SchemaManager} from "./SchemaManager";
 
 export interface ModuleManagerOptions {
-    mqttUrl: string,
-    moduleTypes: ModuleTypePair[],
+    mqttUrl: string;
+    schemaManager: SchemaManager;
 }
 
 export interface ModuleTypePair {
@@ -35,75 +36,45 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
     private readonly _mqtt: MqttClient
     private readonly _router: MqttRouter;
     private _run: RealtimeRun | undefined;
-    private _schema: DAQSchema | undefined;
 
     constructor(opts: ModuleManagerOptions) {
         super();
         this._opts = opts;
         this._mqtt = connect(opts.mqttUrl);
         this._router = new MqttRouter(this._mqtt);
+
+        this._opts.schemaManager.on("load", this.bindSchema.bind(this));
+        this._opts.schemaManager.on("unload", this.unbindSchema.bind(this));
     }
 
-    public moduleTypes() {
-        return this._opts.moduleTypes;
+    schemaManager() {
+        return this._opts.schemaManager;
     }
 
-    loadSchema(schema: DAQSchema): this {
+    bindSchema(schema: DAQSchema, instances: AnyModuleInstance[]): this {
         //Unload a schema before loading a new one.
-        if (this._schema)
-            this.unloadSchema(false);
-
-        //console.log(schema)
-        const updatedModules = schema.modules.map(m => {
-            const mType = this.moduleTypes().find(t => t.type.typename() === m.type);
-            if (!mType) throw new Error(`Couldn't find module with typename >${m.type}<`);
-
-            const instance = new mType.instance(m);
-            this.linkInstanceMqtt(instance);
-            this._moduleInstances.push(instance);
-
-            instance.on("definition_updated", this.handleInstanceConfigMutation.bind(this));
-
-            return instance.definition();
-        });
-
-        this._schema = {...schema, modules: updatedModules};
+        this.unbindSchema(schema, instances);
 
         //Setup new Run
-        const newRun = new RealtimeRun(v4(), this.schema());
+        const newRun = new RealtimeRun(v4(), schema);
         this._run?.replace(newRun.uuid());
         this._run = newRun;
 
-        //this.emitSchemaUpdated();
-        this.emit("schema_load", this.schema() as DAQSchema, this._run);
+        instances.forEach(i => this._router.on(`car/${i.id()}/raw`, i.handleRawInput));
+
         return this;
     }
 
-    unloadSchema(destroyRun = true) {
-        if (!this._schema)
-            return;
-
-        this._router.removeAllListeners();
-
-        if(destroyRun) {
-            this._run?.destroy();
-            this._run = undefined;
+    unbindSchema(schema: DAQSchema, instances: AnyModuleInstance[]) {
+        for(const i of instances) {
+            //Detach MQTT Listeners
+            this._router.off(`car/${i.id()}/raw`, i.handleRawInput);
         }
 
-        this.emit("schema_unload");
     }
 
     handleInstanceConfigMutation() {
-        this.emit("schema_updated", this.schema() as DAQSchema);
-    }
-
-    //TODO: Types
-    linkInstanceMqtt(instance: any) {
-        this._router.on(`car/${instance.id()}/raw`, instance.handleRawInput.bind(instance));
-    }
-
-    schema() {
-        return this._schema;
+        this.emit("schema_updated", this.schemaManager().schema() as DAQSchema);
     }
 
     getRuns(): RealtimeRun[] {

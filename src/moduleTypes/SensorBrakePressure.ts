@@ -17,7 +17,7 @@ export type HumanReadableStorageT = { psi: number }
 const t = new ModuleType<StorageT, MqttT, ConfigT>({
     typename: "brake_pressure",
     configSchema: Joi.object({
-        config_v: Joi.number()
+        config_v: Joi.number().default(0)
     }),
     rawStruct: cStruct({analogRaw: ctypes.uint16}),
     storageStruct: cStruct({analogRaw: ctypes.uint16}),

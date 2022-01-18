@@ -18,12 +18,12 @@ interface ModuleInstanceState {
 }
 
 interface ModuleInstanceEvents {
-    definition_updated: (definition: ModuleDefinition<any>) => void;
+    definition_updated: (definition: ModuleDefinition<any>, breaking: boolean) => void;
 
     //Called when a parameter that requires a full reload is changed (like ID)
-    definition_updated_breaking: (definition: ModuleDefinition<any>) => void;
     raw_data: (data: Buffer) => void;
     data: (data: any) => void;
+    destroyed: () => void;
 }
 
 export const CHANNELS = {
@@ -32,6 +32,8 @@ export const CHANNELS = {
     SET_NAME: "set_name",
     SET_VERSION: "set_version",
 }
+
+export type AnyModuleInstance = ModuleInstance<any, any, any, any, any>;
 
 /**
  * Base class for management and interaction with physical modules through MQTT, as well as their local config and data.
@@ -49,6 +51,7 @@ export abstract class ModuleInstance<StorageStruct,
     private _metaState: ModuleInstanceState;
     private _data: RawStruct | undefined;
     private _definitionUpdated: boolean = false;
+    private _destroyed = false;
 
     public _watchedDefinition: ModuleDefinition<ConfigT>;
 
@@ -69,6 +72,8 @@ export abstract class ModuleInstance<StorageStruct,
 
         //Setup public definition
         this._watchedDefinition = onChange(this._definition, this.handleDefinitionChange.bind(this));
+
+        this.handleRawInput = this.handleRawInput.bind(this);
     }
 
     protected abstract convertStored(data: StorageStruct): HumanReadableStorageT;
@@ -79,11 +84,6 @@ export abstract class ModuleInstance<StorageStruct,
 
     private handleDefinitionChange(path: string, value: unknown, previousValue: unknown, applyData: any) {
         this._definitionUpdated = true;
-
-        console.log('path:', path);
-        console.log('value:', value);
-        console.log('previousValue:', previousValue);
-        console.log('applyData:', applyData);
     }
 
     public config(): ConfigT {
@@ -143,7 +143,7 @@ export abstract class ModuleInstance<StorageStruct,
     }
 
     definition() {
-        return JSON.parse(JSON.stringify(this._definition));
+        return this._definition;
     }
 
     toJSON() {
@@ -165,5 +165,10 @@ export abstract class ModuleInstance<StorageStruct,
 
     setVersion(version: number) {
         this._watchedDefinition.version = version;
+    }
+
+    destroy() { //TODO: ADD DESTROYED CHECKS TO EVERYTHING
+        this._destroyed = true;
+        this.emit("destroyed");
     }
 }

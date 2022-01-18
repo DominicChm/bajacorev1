@@ -42,12 +42,19 @@ export class ClientAgent {
         io.on(CHANNELS.RUN_DELETE_REQUEST, this.wh(this.handleRunDeleteRequest));
         io.on(CHANNELS.ACTIVATE_RUN, this.wh(this.activateRun));
 
+        io.on("create_module", this.wh(this.createModule));
+
+
         //Handler should be "latest" deactivation handler, b/c it changes when a
         //run is activated.
         io.on(CHANNELS.DEACTIVATE_RUN, this.wh(() => this.deactivateRun()));
 
 
         this.handleClientStateChange();
+    }
+
+    createModule(typeName: string, id: string) {
+        this.runManager.moduleManager()?.schemaManager().createNewModuleDefinition(typeName, id);
     }
 
     /**
@@ -77,8 +84,6 @@ export class ClientAgent {
     }
 
     handleClientStateChange(path?: string, value?: any, previousValue?: any, name?: any) {
-        //console.log(path, value, previousValue, name);
-        //console.log(this.clientState());
         this.io.emit(CHANNELS.CLIENT_STATE, this.clientState());
     }
 
@@ -96,6 +101,7 @@ export class ClientAgent {
 
         const replaceListener = (replacementUUID: string) => {
             this.activateRun(replacementUUID);
+            //TODO: Re-push data frames.
         }
 
         this.deactivateRun = () => {
