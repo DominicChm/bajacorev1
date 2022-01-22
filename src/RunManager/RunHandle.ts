@@ -2,10 +2,12 @@ import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 import EventEmitter from "events";
 import TypedEmitter from "typed-emitter";
 import {SchemaManager} from "../ModuleManager/SchemaManager";
+import {CType} from "c-type-util";
 
 interface RunEvents {
     destroyed: () => void;
     replaced: (replacementUUID: string) => void;
+    format_changed: () => void;
 
 }
 
@@ -21,6 +23,7 @@ export abstract class RunHandle extends (EventEmitter as new () => TypedEmitter<
         this._runType = runType;
         this._schemaManager = new SchemaManager();
         this.schemaManager().on("unload", this.handleUnload);
+        this.schemaManager().on("load", () => this.emit("format_changed"));
     }
 
     handleUnload() {
