@@ -1,24 +1,30 @@
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 import EventEmitter from "events";
 import TypedEmitter from "typed-emitter";
+import {SchemaManager} from "../ModuleManager/SchemaManager";
 
 interface RunEvents {
     destroyed: () => void;
     replaced: (replacementUUID: string) => void;
-    //schema_patched: (schema: Partial<DAQSchema>) => void;
+
 }
 
 export abstract class RunHandle extends (EventEmitter as new () => TypedEmitter<RunEvents>) {
     private readonly _uuid;
     private readonly _runType;
-    private _schema: DAQSchema | undefined;
+    private _schemaManager: SchemaManager;
     private _destroyed = false;
 
     protected constructor(runType: string, uuid: string, schema: DAQSchema | undefined) {
         super();
         this._uuid = uuid;
         this._runType = runType;
-        this._schema = schema;
+        this._schemaManager = new SchemaManager();
+        this.schema().on("unload", this.handleUnload);
+    }
+
+    handleUnload() {
+        this.
     }
 
     public abstract getHeader(): Uint8Array;
@@ -27,18 +33,8 @@ export abstract class RunHandle extends (EventEmitter as new () => TypedEmitter<
         return this._uuid;
     }
 
-    public setSchema(schema: DAQSchema) {
-        if (this._schema)
-            throw new Error("Attempt to mutate schema!");
-
-        this._schema = schema;
-    }
-
-    public schema(): DAQSchema {
-        if (!this._schema)
-            throw new Error("No schema in run!!!!");
-
-        return this._schema;
+    public schema(): SchemaManager {
+        return this._schemaManager;
     }
 
     public abstract getPlayStream(timestamp?: number, scale?: number): any;

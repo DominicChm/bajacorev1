@@ -18,7 +18,6 @@ export class ClientAgent {
     private io: sio.Socket;
     private runManager: RunManager;
     private _clientState: ClientState;
-    private _activeRun: RunHandle | undefined;
 
     constructor(io: sio.Socket, rm: RunManager) {
         this.io = io;
@@ -54,7 +53,9 @@ export class ClientAgent {
     }
 
     createModule(typeName: string, id: string) {
-        this.runManager.moduleManager()?.schemaManager().createNewModuleDefinition(typeName, id);
+        this.runManager.resolveRun(this._clientState.activeRun as string)
+            .schema()
+            .initModuleDefinition(typeName, id);
     }
 
     /**
@@ -93,17 +94,21 @@ export class ClientAgent {
     }
 
     activateRun(uuid: string) {
+        if(this._clientState.activeRun)
+            this.deactivateRun();
+
         const run = this.runManager.resolveRun(uuid);
         this._clientState.activeRun = uuid;
         this._clientState.schema = run.schema();
 
-        const destroyListener = this.wh(this.deactivateRun);
-
+        // Listeners that handle changes in run state. Detached when run is replaced or destroyed.
+        const destroyListener = this.wh(() => this.deactivateRun());
         const replaceListener = (replacementUUID: string) => {
             this.activateRun(replacementUUID);
             //TODO: Re-push data frames.
         }
 
+        //Update the deactivateRun listener to apply to the newly active run.
         this.deactivateRun = () => {
             this._clientState.activeRun = null;
             this._clientState.schema = null;
@@ -113,7 +118,6 @@ export class ClientAgent {
         }
         run.on("destroyed", destroyListener);
         run.on("replaced", replaceListener);
-
     }
 
     deactivateRun() {
