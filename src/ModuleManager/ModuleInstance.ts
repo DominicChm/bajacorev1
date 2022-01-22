@@ -5,7 +5,7 @@ import {standardizeMac} from "./MACUtil";
 import {MqttRouter} from "./MqttRouter";
 import EventEmitter from "events";
 import TypedEmitter from "typed-emitter";
-import {merge} from "lodash"
+import {cloneDeep, merge} from "lodash"
 
 import onChange from 'on-change';
 import {Namespace, Server, Socket} from "socket.io";
@@ -44,7 +44,6 @@ export abstract class ModuleInstance<StorageStruct,
     HumanReadableStorageT,
     HumanReadableMqttT extends HumanReadableStorageT> extends (EventEmitter as new () => TypedEmitter<ModuleInstanceEvents>) {
 
-    private readonly _definition: ModuleDefinition<ConfigT>;
     private readonly _moduleType: ModuleType<StorageStruct, RawStruct, ConfigT>
     private _mqtt: MqttRouter | undefined;
     private _namespace: Namespace | undefined;
@@ -54,6 +53,7 @@ export abstract class ModuleInstance<StorageStruct,
     private _destroyed = false;
 
     public _watchedDefinition: ModuleDefinition<ConfigT>;
+    private _definition: ModuleDefinition<ConfigT>;
 
     protected constructor(moduleType: ModuleType<StorageStruct, RawStruct, ConfigT>, moduleDefinition: ModuleDefinition<ConfigT>) {
         super();
@@ -61,17 +61,12 @@ export abstract class ModuleInstance<StorageStruct,
         this._metaState = {
             connected: false
         }
+        this._watchedDefinition = {} as any;
+        this._definition = {} as any;
 
-        this._definition = JSON.parse(JSON.stringify(moduleDefinition)); //Deep copy definition to leave original intact
+        this.setDefinition = this.setDefinition.bind(this);
 
-        //Validate definition on construction
-        this._definition.config = moduleType.validateConfig(this._definition.config);
-
-        //Standardize MAC
-        this._definition.id = standardizeMac(this._definition.id);
-
-        //Setup public definition
-        this._watchedDefinition = onChange(this._definition, this.handleDefinitionChange.bind(this));
+        this.setDefinition(moduleDefinition);
 
         this.handleRawInput = this.handleRawInput.bind(this);
     }
@@ -82,18 +77,29 @@ export abstract class ModuleInstance<StorageStruct,
         return this.convertStored(data) as HumanReadableMqttT;
     }
 
-    private handleDefinitionChange(path: string, value: unknown, previousValue: unknown, applyData: any) {
-        this._definitionUpdated = true;
+    private handleDefinitionChange() {
+        this.emit("definition_updated", this.definition(), false);
     }
+
+    public setDefinition(def: ModuleDefinition<ConfigT>) {
+        console.log("DEF SET");
+        const newDef = cloneDeep(def); //Deep copy definition to leave original intact
+        //Validate definition on construction
+        newDef.config = this._moduleType.validateConfig(newDef.config);
+
+        //Standardize MAC
+        newDef.id = standardizeMac(newDef.id);
+
+        //Setup public definition
+        this._definition = newDef;
+        this._watchedDefinition = onChange(this._definition, this.handleDefinitionChange.bind(this));
+
+        this.handleDefinitionChange();
+    }
+
 
     public config(): ConfigT {
         return JSON.parse(JSON.stringify(this._definition.config));
-    }
-
-    public setConfig(cfg: Partial<ConfigT>): this {
-        const merged = merge(this.config(), cfg);
-        this._watchedDefinition.config = this._moduleType.validateConfig(merged);
-        return this;
     }
 
     public id() {

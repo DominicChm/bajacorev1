@@ -18,6 +18,7 @@ export class ClientAgent {
     private io: sio.Socket;
     private runManager: RunManager;
     private _clientState: ClientState;
+    private _activeRun: RunHandle | null = null;
 
     constructor(io: sio.Socket, rm: RunManager) {
         this.io = io;
@@ -43,6 +44,8 @@ export class ClientAgent {
 
         io.on("create_module", this.wh(this.createModule));
 
+        io.on("schema_update", this.wh(this.handleSchemaUpdateRequest))
+
 
         //Handler should be "latest" deactivation handler, b/c it changes when a
         //run is activated.
@@ -52,10 +55,18 @@ export class ClientAgent {
         this.handleClientStateChange();
     }
 
+    private handleSchemaUpdateRequest(schema: DAQSchema) {
+        if (!this._activeRun)
+            throw new Error("Can't set schema - no active run!");
+        this._activeRun
+            .schemaManager()
+            .load(schema);
+    }
+
     createModule(typeName: string, id: string) {
-        this.runManager.resolveRun(this._clientState.activeRun as string)
-            .schema()
-            .initModuleDefinition(typeName, id);
+        this._activeRun
+            ?.schemaManager()
+            .createNewModuleDefinition(typeName, id);
     }
 
     /**
@@ -70,6 +81,7 @@ export class ClientAgent {
             } catch (e: any) {
                 console.error(e);
                 this.emitError(e.message);
+                this.handleClientStateChange();
             }
         }
 
@@ -94,12 +106,17 @@ export class ClientAgent {
     }
 
     activateRun(uuid: string) {
-        if(this._clientState.activeRun)
+        if (this._clientState.activeRun)
             this.deactivateRun();
 
-        const run = this.runManager.resolveRun(uuid);
+        this._activeRun = this.runManager.resolveRun(uuid);
         this._clientState.activeRun = uuid;
-        this._clientState.schema = run.schema();
+
+        this._clientState.schema = this._activeRun.schemaManager().schema();
+        this._activeRun
+            ?.schemaManager()
+            .on("load", (schema) => this._clientState.schema = schema)
+            .on("update", (schema) => this._clientState.schema = schema)
 
         // Listeners that handle changes in run state. Detached when run is replaced or destroyed.
         const destroyListener = this.wh(() => this.deactivateRun());
@@ -110,14 +127,16 @@ export class ClientAgent {
 
         //Update the deactivateRun listener to apply to the newly active run.
         this.deactivateRun = () => {
+            this._activeRun?.off("destroyed", destroyListener);
+            this._activeRun?.off("replaced", replaceListener);
+
             this._clientState.activeRun = null;
             this._clientState.schema = null;
-            run.off("destroyed", destroyListener);
-            run.off("replaced", replaceListener);
-
+            this._activeRun = null;
         }
-        run.on("destroyed", destroyListener);
-        run.on("replaced", replaceListener);
+
+        this._activeRun.on("destroyed", destroyListener);
+        this._activeRun.on("replaced", replaceListener);
     }
 
     deactivateRun() {

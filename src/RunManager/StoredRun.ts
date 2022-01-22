@@ -36,6 +36,7 @@ export class StoredRun extends RunHandle {
         super("stored", uuid, testSchema);
         this.rootPath = rootPath;
         this.isWriting = existsSync(this.resolve(paths.lockFile));
+        this.schemaManager().load({name: "STOREDRUNSCHEM", modules: []});
     }
 
     public lockForWriting(): this {
@@ -107,7 +108,7 @@ export class StoredRun extends RunHandle {
 
     //Links this stored run to a realtime run. It will write chunks from the realtime run until stopped.
     link(run: RealtimeRun): this {
-        if(!run)
+        if (!run)
             throw new Error("Link failed - Run doesn't exist!");
 
         this.lockForWriting();
@@ -129,7 +130,7 @@ export class StoredRun extends RunHandle {
     }
 
     size(): number {
-        if(this.destroyed())
+        if (this.destroyed())
             return 0;
 
         if ((this.isWriting || !this._size) && existsSync(this.dataPath())) //Only update size if actively writing or no previous size.

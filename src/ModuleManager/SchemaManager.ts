@@ -6,6 +6,8 @@ import {ModuleDefinition} from "./interfaces/ModuleDefinition";
 import {ModuleTypePair} from "./ModuleManager";
 import SensorBrakePressure from "../moduleTypes/SensorBrakePressure";
 import onChange from "on-change";
+import {cloneDeep} from "lodash";
+import {standardizeMac} from "./MACUtil";
 
 interface SchemaManagerEvents {
     load: (schema: DAQSchema, instances: AnyModuleInstance[]) => void;
@@ -35,10 +37,10 @@ export class SchemaManager extends (EventEmitter as new () => TypedEmitter<Schem
         this.moduleTypes = this.moduleTypes.bind(this);
         this.instances = this.instances.bind(this);
         this.handleInstanceDefinitionChange = this.handleInstanceDefinitionChange.bind(this);
-    }
-
-    loaded() {
-        return this._schema;
+        this.createModule = this.createModule.bind(this);
+        this.addModuleDefinition = this.addModuleDefinition.bind(this);
+        this.validateDefinition = this.validateDefinition.bind(this);
+        this.instantiateDefinition = this.instantiateDefinition.bind(this);
     }
 
     //Returns module types.
@@ -51,53 +53,58 @@ export class SchemaManager extends (EventEmitter as new () => TypedEmitter<Schem
         return this._instances;
     }
 
-    private loadSchema(schema: DAQSchema) {
-        this._schema = {...schema, modules: []};
-        schema.modules.forEach(this.addModuleDefinition); //Load modules
-    }
-
-    private instantiateSchema(schema: DAQSchema) {
-        const s = this.checkSchema();
-
-        if (this._instances && this._instances.length > 0)
-            throw new Error("Attempt to instantiate schema when there are loaded instances! Was the previous one not unloaded?");
-
-        s.modules.forEach(this.instantiateDefinition);
-    }
-
     private instantiateDefinition(def: ModuleDefinition<any>) {
         const tp = this.findTypePair(def.type);
         const instance = new tp.instance(def);
         this._instances.push(instance);
     }
 
+    //Compares an incoming schema with the current one to determine if a full reload is necessary.
+    requiresReload(schema: DAQSchema) {
+        return schema.modules.length !== this._schema?.modules.length;
+    }
+
     load(schema: DAQSchema): this {
-        if (this._schema)
-            this.unload();
+        if (this.requiresReload(schema)) {
+            const newSchema = {
+                ...schema,
+                modules: schema.modules.map(this.validateDefinition),
+            };
 
-        this.loadSchema(schema);
-        this.instantiateSchema(this._schema as DAQSchema);
+            //Unload current if needed after new schema is validated.
+            if (this._schema)
+                this.unload();
 
-        console.log("Loaded!");
+            newSchema.modules.forEach(this.instantiateDefinition);
+
+            this._schema = newSchema;
+
+            console.log("Loaded (Breaking)!");
+            this.emit("load", this.schema(), this._instances);
+        } else {
+            schema.modules.forEach((v, i) => {
+                this._instances[i].setDefinition(v);
+            });
+
+            console.log("Loaded (Hot)!");
+            this.emit("update", this.schema(), this._instances);
+        }
+
+
         return this;
     }
 
+    private validateDefinition(def: ModuleDefinition<any>) {
+        const typePair = this.findTypePair(def.type); //Check type
 
-    checkSchema() {
-        if (!this._schema)
-            throw new Error("Schema not loaded!");
+        def.id = standardizeMac(def.id);
 
-        return this._schema as DAQSchema;
+        //Validate all module definition configs.
+        def.config = typePair.type.validateConfig(def.config);
+
+        return def;
     }
 
-    setName(name: string) {
-        const s = this.checkSchema();
-        s.name = name;
-    }
-
-    setConfig() {
-
-    }
 
     unload(): this {
         if (!this._schema)
@@ -112,20 +119,18 @@ export class SchemaManager extends (EventEmitter as new () => TypedEmitter<Schem
         return this;
     }
 
-    private reload() {
-        console.log("SchemaManager - RELOAD!");
-        if (this.schema())
-            this.load(this.schema() as DAQSchema);
-        else
-            throw new Error("Attempt to reload without a schema loaded!");
+    private handleInstanceDefinitionChange(def: ModuleDefinition<any>, breaking: boolean) {
+        this.load(this.schema())
     }
 
-    private handleInstanceDefinitionChange(def: ModuleDefinition<any>, breaking: boolean) {
-        if (this.schema())
-            this.load(this.schema() as DAQSchema);
+    public schema() {
+        if (!this._schema)
+            throw new Error("No schema loaded!");
 
-        else if (breaking)
-            throw new Error("A breaking change happened while a schema wasn't loaded???");
+        return {
+            ...cloneDeep(this._schema),
+            modules: this._instances.map(m => m.definition())
+        };
     }
 
     //Adds a bare-minimum definition to the schema.
@@ -160,19 +165,14 @@ export class SchemaManager extends (EventEmitter as new () => TypedEmitter<Schem
 
     addModule(def: ModuleDefinition<any>): this {
         console.log(`ADDING: ${def.id}`);
-        this._schema?.modules.push(def);
-        this.reload();
+        const s = this.schema();
+        s.modules.push(def);
+
+        this.load(s);
         return this;
     }
 
-    removeModule(id: string): this {
-        console.log(`ADDING: ${id}`);
-        this._schema?.modules.filter(v => v.id !== id);
-        this.reload();
-        return this;
-    }
-
-    schema() {
-        return this._watchedSchema
+    createModule(id: string, typeName: string) {
+        this.createNewModuleDefinition(typeName, id);
     }
 }

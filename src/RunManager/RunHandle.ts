@@ -20,11 +20,11 @@ export abstract class RunHandle extends (EventEmitter as new () => TypedEmitter<
         this._uuid = uuid;
         this._runType = runType;
         this._schemaManager = new SchemaManager();
-        this.schema().on("unload", this.handleUnload);
+        this.schemaManager().on("unload", this.handleUnload);
     }
 
     handleUnload() {
-        this.
+
     }
 
     public abstract getHeader(): Uint8Array;
@@ -33,7 +33,7 @@ export abstract class RunHandle extends (EventEmitter as new () => TypedEmitter<
         return this._uuid;
     }
 
-    public schema(): SchemaManager {
+    public schemaManager(): SchemaManager {
         return this._schemaManager;
     }
 

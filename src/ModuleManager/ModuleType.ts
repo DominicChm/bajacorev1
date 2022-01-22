@@ -1,4 +1,4 @@
-import Joi from "joi";
+import Joi, {ValidationOptions} from "joi";
 import ctypes, {CType} from "c-type-util"
 
 export interface ModuleTypeOptions<StorageStruct,
@@ -24,8 +24,8 @@ export class ModuleType<StorageStruct, MqttStruct extends StorageStruct, ConfigT
         return this._opts.typename;
     }
 
-    public validateConfig(obj: any): ConfigT {
-        const {value, error} = this._opts.configSchema.validate(obj);
+    public validateConfig(obj: any, opts?: ValidationOptions): ConfigT {
+        const {value, error} = this._opts.configSchema.validate(obj, opts);
         if (error) throw error;
 
         return value as ConfigT;
