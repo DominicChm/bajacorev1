@@ -6,6 +6,7 @@ import onChange from "on-change";
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 import {Capabilties} from "../RunManager/interfaces/capabilties";
 import {RealtimeRun} from "../RunManager/RealtimeRun";
+import {assign} from "lodash";
 
 interface ClientState {
     activeRun: string | null;
@@ -58,6 +59,7 @@ export class ClientAgent {
     private handleSchemaUpdateRequest(schema: DAQSchema) {
         if (!this._activeRun)
             throw new Error("Can't set schema - no active run!");
+
         this._activeRun
             .schemaManager()
             .load(schema);
@@ -109,14 +111,19 @@ export class ClientAgent {
         if (this._clientState.activeRun)
             this.deactivateRun();
 
-        this._activeRun = this.runManager.resolveRun(uuid);
-        this._clientState.activeRun = uuid;
+        //Don't write changes to our state until the end to keep potential errors from having an effect.
+        const newState: Partial<ClientState> = {};
+        const activeRun = this.runManager.resolveRun(uuid);
 
-        this._clientState.schema = this._activeRun.schemaManager().schema();
-        this._activeRun
+        newState.activeRun = uuid;
+
+        newState.schema = activeRun.schemaManager().schema();
+        activeRun
             ?.schemaManager()
             .on("load", (schema) => this._clientState.schema = schema)
             .on("update", (schema) => this._clientState.schema = schema)
+
+
 
         // Listeners that handle changes in run state. Detached when run is replaced or destroyed.
         const destroyListener = this.wh(() => this.deactivateRun());
@@ -135,8 +142,11 @@ export class ClientAgent {
             this._activeRun = null;
         }
 
-        this._activeRun.on("destroyed", destroyListener);
-        this._activeRun.on("replaced", replaceListener);
+        activeRun.on("destroyed", destroyListener);
+        activeRun.on("replaced", replaceListener);
+
+        assign(this._clientState, newState);
+        this._activeRun = activeRun;
     }
 
     deactivateRun() {

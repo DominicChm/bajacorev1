@@ -14,7 +14,7 @@ interface RunEvents {
 export abstract class RunHandle extends (EventEmitter as new () => TypedEmitter<RunEvents>) {
     private readonly _uuid;
     private readonly _runType;
-    private _schemaManager: SchemaManager;
+    private readonly _schemaManager: SchemaManager;
     private _destroyed = false;
 
     protected constructor(runType: string, uuid: string, schema: DAQSchema | undefined) {

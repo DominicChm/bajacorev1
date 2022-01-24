@@ -6,7 +6,7 @@ import {ModuleDefinition} from "./interfaces/ModuleDefinition";
 import {ModuleTypePair} from "./ModuleManager";
 import SensorBrakePressure from "../moduleTypes/SensorBrakePressure";
 import onChange from "on-change";
-import {cloneDeep} from "lodash";
+import {cloneDeep, isEqualWith} from "lodash";
 import {standardizeMac} from "./MACUtil";
 
 interface SchemaManagerEvents {
@@ -36,7 +36,6 @@ export class SchemaManager extends (EventEmitter as new () => TypedEmitter<Schem
         this.load = this.load.bind(this);
         this.moduleTypes = this.moduleTypes.bind(this);
         this.instances = this.instances.bind(this);
-        this.handleInstanceDefinitionChange = this.handleInstanceDefinitionChange.bind(this);
         this.createModule = this.createModule.bind(this);
         this.addModuleDefinition = this.addModuleDefinition.bind(this);
         this.validateDefinition = this.validateDefinition.bind(this);
@@ -61,10 +60,14 @@ export class SchemaManager extends (EventEmitter as new () => TypedEmitter<Schem
 
     //Compares an incoming schema with the current one to determine if a full reload is necessary.
     requiresReload(schema: DAQSchema) {
+        const idsEqual = isEqualWith(this._schema, schema, (val: any, other: any) => {
+            console.log(val, other);
+            return true;
+        });
         return schema.modules.length !== this._schema?.modules.length;
     }
 
-    load(schema: DAQSchema): this {
+    load(schema: DAQSchema, fullReload: boolean = false): this {
         if (this.requiresReload(schema)) {
             const newSchema = {
                 ...schema,
@@ -117,10 +120,6 @@ export class SchemaManager extends (EventEmitter as new () => TypedEmitter<Schem
         this._instances = [];
 
         return this;
-    }
-
-    private handleInstanceDefinitionChange(def: ModuleDefinition<any>, breaking: boolean) {
-        this.load(this.schema())
     }
 
     public schema() {

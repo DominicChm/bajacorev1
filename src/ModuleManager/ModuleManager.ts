@@ -36,15 +36,21 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
     private readonly _mqtt: MqttClient
     private readonly _router: MqttRouter;
     private _run: RealtimeRun | undefined;
+    private _listenedRawChannels: [string, any][] = [];
 
     constructor(opts: ModuleManagerOptions) {
         super();
         this._opts = opts;
         this._mqtt = connect(opts.mqttUrl);
         this._router = new MqttRouter(this._mqtt);
+        this._run = new RealtimeRun(v4());
 
         this._opts.schemaManager.on("load", this.bindSchema.bind(this));
         this._opts.schemaManager.on("unload", this.unbindSchema.bind(this));
+
+        this._run.schemaManager().on("load", this.bindSchema.bind(this));
+        this._run.schemaManager().on("unload", this.unbindSchema.bind(this));
+        this._run.schemaManager().load({name: "REALTIMESCHEMA", modules: []});
     }
 
     schemaManager() {
@@ -52,29 +58,23 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
     }
 
     bindSchema(schema: DAQSchema, instances: AnyModuleInstance[]): this {
-        //Unload a schema before loading a new one.
-        this.unbindSchema(schema, instances);
-
-        //Setup new Run
-        const newRun = new RealtimeRun(v4(), schema);
-        this._run?.replace(newRun.uuid());
-        this._run = newRun;
-
-        instances.forEach(i => this._router.on(`car/${i.id()}/raw`, i.handleRawInput));
+        //attach all modules to MQTT.
+        for (const i of instances) {
+            const e: [string, any] = [`car/${i.id()}/raw`, i.handleRawInput];
+            instances.forEach(i => this._router.on(e[0], e[1]));
+            this._listenedRawChannels.push(e);
+        }
 
         return this;
     }
 
     unbindSchema(schema: DAQSchema, instances: AnyModuleInstance[]) {
-        for(const i of instances) {
+        for (const [event, listener] of this._listenedRawChannels) {
             //Detach MQTT Listeners
-            this._router.off(`car/${i.id()}/raw`, i.handleRawInput);
+            this._router.off(event, listener);
         }
 
-    }
-
-    handleInstanceConfigMutation() {
-        this.emit("schema_updated", this.schemaManager().schema() as DAQSchema);
+        this._listenedRawChannels = [];
     }
 
     getRuns(): RealtimeRun[] {
@@ -86,15 +86,11 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
 
     instance(id: string): any | undefined {
         id = standardizeMac(id);
-        return this._moduleInstances.find(m => id === m.id());
+        return this.schemaManager().instances().find(m => id === m.id());
     }
 
     instances() {
-        return this._moduleInstances;
-    }
-
-    private linkModuleInstance(instance: ModuleInstance<any, any, any, any, any>) {
-
+        return this.schemaManager().instances();
     }
 }
 

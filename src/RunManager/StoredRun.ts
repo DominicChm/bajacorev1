@@ -112,6 +112,7 @@ export class StoredRun extends RunHandle {
             throw new Error("Link failed - Run doesn't exist!");
 
         this.lockForWriting();
+        run.on("format_changed", this.unlink.bind(this));
         this.writeData(run.getHeader());
 
         return this;

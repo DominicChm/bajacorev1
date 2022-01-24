@@ -3,7 +3,7 @@ import {Stream} from "stream";
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 
 export class RealtimeRun extends RunHandle {
-    constructor(uuid: string, schema: DAQSchema | undefined) {
+    constructor(uuid: string, schema?: DAQSchema | undefined) {
         super("realtime", uuid, schema);
     }
 
