@@ -9,11 +9,11 @@ import {MqttRouter} from "./MqttRouter";
 import {standardizeMac} from "./MACUtil";
 import EventEmitter from "events";
 import TypedEmitter from "typed-emitter";
-import {SchemaManager} from "./SchemaManager";
+import {SchemaManager} from "../SchemaManager/SchemaManager";
 
 export interface ModuleManagerOptions {
     mqttUrl: string;
-    schemaManager: SchemaManager;
+    schemaPath: string;
 }
 
 export interface ModuleTypePair {
@@ -35,7 +35,7 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
     private _moduleInstances: ModuleInstance<any, any, any, any, any>[] = [];
     private readonly _mqtt: MqttClient
     private readonly _router: MqttRouter;
-    private _run: RealtimeRun | undefined;
+    private readonly _run: RealtimeRun | undefined;
     private _listenedRawChannels: [string, any][] = [];
 
     constructor(opts: ModuleManagerOptions) {
@@ -43,18 +43,14 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
         this._opts = opts;
         this._mqtt = connect(opts.mqttUrl);
         this._router = new MqttRouter(this._mqtt);
-        this._run = new RealtimeRun(v4());
-
-        this._opts.schemaManager.on("load", this.bindSchema.bind(this));
-        this._opts.schemaManager.on("unload", this.unbindSchema.bind(this));
+        this._run = new RealtimeRun(v4(), opts.schemaPath);
 
         this._run.schemaManager().on("load", this.bindSchema.bind(this));
         this._run.schemaManager().on("unload", this.unbindSchema.bind(this));
-        this._run.schemaManager().load({name: "REALTIMESCHEMA", modules: []});
     }
 
     schemaManager() {
-        return this._opts.schemaManager;
+        return this._run?.schemaManager();
     }
 
     bindSchema(schema: DAQSchema, instances: AnyModuleInstance[]): this {
@@ -86,11 +82,11 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
 
     instance(id: string): any | undefined {
         id = standardizeMac(id);
-        return this.schemaManager().instances().find(m => id === m.id());
+        return this.schemaManager()?.instances().find(m => id === m.id());
     }
 
     instances() {
-        return this.schemaManager().instances();
+        return this.schemaManager()?.instances();
     }
 }
 

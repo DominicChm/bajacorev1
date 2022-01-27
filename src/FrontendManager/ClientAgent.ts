@@ -1,7 +1,7 @@
 import {RunManager} from "../RunManager/RunManager";
 import * as sio from "socket.io"
 import {CHANNELS} from "./SIOChannels";
-import {RunHandle} from "../RunManager/RunHandle";
+import {PlaybackManager, PlayOptions, RunHandle} from "../RunManager/RunHandle";
 import onChange from "on-change";
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 import {Capabilties} from "../RunManager/interfaces/capabilties";
@@ -10,6 +10,7 @@ import {assign} from "lodash";
 
 interface ClientState {
     activeRun: string | null;
+    playing: boolean;
     schema: DAQSchema | null;
     capabilities: Capabilties;
     runs: RunHandle[];
@@ -20,6 +21,7 @@ export class ClientAgent {
     private runManager: RunManager;
     private _clientState: ClientState;
     private _activeRun: RunHandle | null = null;
+    private _activePlay: PlaybackManager | null = null;
 
     constructor(io: sio.Socket, rm: RunManager) {
         this.io = io;
@@ -28,6 +30,7 @@ export class ClientAgent {
         this._clientState = onChange({
             activeRun: null,
             schema: null,
+            playing: false,
             capabilities: rm.capabilities(),
             runs: this.runManager.runs()
         }, this.handleClientStateChange.bind(this));
@@ -38,7 +41,6 @@ export class ClientAgent {
         io.on(CHANNELS.DATA_FRAME_REQUEST, this.wh(this.handleFrameRequest));
         io.on(CHANNELS.DATA_PLAY_REQUEST, this.wh(this.handlePlayRequest));
         io.on(CHANNELS.RUN_INIT_REQUEST, this.wh(this.handleRunInitRequest));
-        io.on(CHANNELS.RUN_HEADER_REQUEST, this.wh(this.handleRunHeaderRequest));
         io.on(CHANNELS.RUN_STOP_REQUEST, this.wh(this.handleRunStopRequest));
         io.on(CHANNELS.RUN_DELETE_REQUEST, this.wh(this.handleRunDeleteRequest));
         io.on(CHANNELS.ACTIVATE_RUN, this.wh(this.activateRun));
@@ -124,7 +126,6 @@ export class ClientAgent {
             .on("update", (schema) => this._clientState.schema = schema)
 
 
-
         // Listeners that handle changes in run state. Detached when run is replaced or destroyed.
         const destroyListener = this.wh(() => this.deactivateRun());
         const replaceListener = (replacementUUID: string) => {
@@ -136,6 +137,7 @@ export class ClientAgent {
         this.deactivateRun = () => {
             this._activeRun?.off("destroyed", destroyListener);
             this._activeRun?.off("replaced", replaceListener);
+            this.stopPlaying();
 
             this._clientState.activeRun = null;
             this._clientState.schema = null;
@@ -157,9 +159,29 @@ export class ClientAgent {
         return this._clientState;
     }
 
-    handlePlayRequest() {
+    emitData(data: any) {
+        this.io.emit("data", data);
+    }
+
+    startPlaying(opts: PlayOptions) {
         if (!this.clientState().activeRun)
             throw new Error("Can't start playback - No active run!");
+
+        this.stopPlaying();
+
+        this._clientState.playing = true;
+        this._activePlay = this._activeRun?.play(opts, this.wh(this.emitData)) ?? null;
+    }
+
+    stopPlaying() {
+        if (this._activePlay) {
+            this._activePlay.stop();
+            this._clientState.playing = false;
+        }
+    }
+
+    handlePlayRequest(opts: PlayOptions) {
+        this.startPlaying(opts);
     }
 
     handleRunStopRequest(uuid: string) {
@@ -176,9 +198,6 @@ export class ClientAgent {
         this.runManager.deleteStoredRun(uuid);
     }
 
-    handleRunHeaderRequest(uuid: string) {
-
-    }
 
     emitError(errorMessage: string) {
         console.log(`emitting error: ${errorMessage}`);

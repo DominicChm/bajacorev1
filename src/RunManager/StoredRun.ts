@@ -1,6 +1,6 @@
 import * as Path from "path";
 import fs, {ensureFile, ensureFileSync, remove, removeSync, existsSync} from "fs-extra";
-import {RunHandle} from "./RunHandle";
+import {PlayOptions, RunHandle} from "./RunHandle";
 import {RealtimeRun} from "./RealtimeRun";
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 
@@ -33,7 +33,7 @@ export class StoredRun extends RunHandle {
 
     constructor(uuid: string, rootPath: string) {
         //TODO: Read stored schema!
-        super("stored", uuid, testSchema);
+        super("stored", uuid, Path.resolve(rootPath, "schema.json"));
         this.rootPath = rootPath;
         this.isWriting = existsSync(this.resolve(paths.lockFile));
         this.schemaManager().load({name: "STOREDRUNSCHEM", modules: []});
@@ -98,7 +98,7 @@ export class StoredRun extends RunHandle {
         return this.resolve(paths.lockFile);
     }
 
-    getPlayStream(timestamp?: number, scale?: number): any {
+    play(opts: PlayOptions, callback: (frame: any) => void): any {
         return undefined as unknown as any;
     }
 
@@ -113,7 +113,6 @@ export class StoredRun extends RunHandle {
 
         this.lockForWriting();
         run.on("format_changed", this.unlink.bind(this));
-        this.writeData(run.getHeader());
 
         return this;
     }

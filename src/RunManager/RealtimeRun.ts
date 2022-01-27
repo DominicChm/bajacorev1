@@ -1,17 +1,30 @@
-import {RunHandle} from "./RunHandle";
+import {PlaybackManager, PlayOptions, RunHandle} from "./RunHandle";
 import {Stream} from "stream";
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 
+
 export class RealtimeRun extends RunHandle {
-    constructor(uuid: string, schema?: DAQSchema | undefined) {
-        super("realtime", uuid, schema);
+    constructor(uuid: string, schemaPath: string) {
+        super("realtime", uuid, schemaPath);
     }
 
-    getPlayStream(timestamp?: number, scale?: number): any {
-        return undefined as unknown as any;
+    play(opts: PlayOptions, callback: (frame: any) => void) {
+        if (opts.scale && opts.scale !== 1)
+            throw new Error("Can't play a RealtimeRun at a scale not equal to 1!");
+
+        if (opts.tEnd || opts.tStart)
+            throw new Error("Can't specify RealtimeRun start/stop!");
+
+        const stopCB = () => {
+            this.off("data", callback);
+        };
+
+        this.on("data", callback);
+
+        return new PlaybackManager(stopCB);
     }
 
-    getHeader(): Uint8Array {
-        return new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    feedData(data: any) {
+
     }
 }

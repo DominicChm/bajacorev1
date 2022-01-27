@@ -1,13 +1,13 @@
-import {DAQSchema} from "./interfaces/DAQSchema";
+import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 import EventEmitter from "events";
 import TypedEmitter from "typed-emitter";
-import {AnyModuleInstance, ModuleInstance} from "./ModuleInstance";
-import {ModuleDefinition} from "./interfaces/ModuleDefinition";
-import {ModuleTypePair} from "./ModuleManager";
+import {AnyModuleInstance, ModuleInstance} from "../ModuleManager/ModuleInstance";
+import {ModuleDefinition} from "../ModuleManager/interfaces/ModuleDefinition";
+import {ModuleTypePair} from "../ModuleManager/ModuleManager";
 import SensorBrakePressure from "../moduleTypes/SensorBrakePressure";
 import onChange from "on-change";
 import {cloneDeep, isEqualWith} from "lodash";
-import {standardizeMac} from "./MACUtil";
+import {standardizeMac} from "../ModuleManager/MACUtil";
 
 interface SchemaManagerEvents {
     load: (schema: DAQSchema, instances: AnyModuleInstance[]) => void;
