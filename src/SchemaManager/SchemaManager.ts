@@ -1,43 +1,46 @@
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
-import EventEmitter from "events";
-import TypedEmitter from "typed-emitter";
-import {AnyModuleInstance, ModuleInstance} from "../ModuleManager/ModuleInstance";
+import {ModuleInstance} from "../ModuleManager/ModuleInstance";
 import {ModuleDefinition} from "../ModuleManager/interfaces/ModuleDefinition";
-import {ModuleTypePair} from "../ModuleManager/ModuleManager";
-import SensorBrakePressure from "../moduleTypes/SensorBrakePressure";
-import onChange from "on-change";
 import {cloneDeep, isEqualWith} from "lodash";
 import {standardizeMac} from "../ModuleManager/MACUtil";
+import {TypedEmitter} from "tiny-typed-emitter";
+import {moduleTypeDefinitions} from "../moduleTypes";
+import {ModuleTypeDefinition} from "../ModuleManager/ModuleTypeDefinition";
+import {ModuleTypeDriver} from "../ModuleManager/ModuleTypeDriver";
 
 interface SchemaManagerEvents {
-    load: (schema: DAQSchema, instances: AnyModuleInstance[]) => void;
-    update: (schema: DAQSchema, instances: AnyModuleInstance[]) => void;
-    unload: (schema: DAQSchema, instances: AnyModuleInstance[]) => void;
+    //General listeners - fire whenever anything in the schema changes
+    load: (schema: DAQSchema, instances: ModuleInstance[]) => void;
+    update: (schema: DAQSchema, instances: ModuleInstance[]) => void;
+    unload: (schema: DAQSchema, instances: ModuleInstance[]) => void;
+
     module_removed: (id: string, schema: DAQSchema) => void;
     module_added: (id: string, schema: DAQSchema) => void;
 }
 
+
 export interface SchemaManagerOptions {
-    moduleTypes: ModuleTypePair[],
+    moduleTypes: ModuleTypeDefinition[],
 }
 
-export class SchemaManager extends (EventEmitter as new () => TypedEmitter<SchemaManagerEvents>) {
+export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     private _schema: DAQSchema | null = null;
-    private _instances: AnyModuleInstance[] = [];
-    private readonly _opts: SchemaManagerOptions;
+    private _instances: ModuleInstance[] = [];
+    private readonly _opts;
 
     constructor(opts: Partial<SchemaManagerOptions> = {}) {
         super();
         this._opts = {
-            moduleTypes: [SensorBrakePressure],
-            ...opts
+            moduleTypes: moduleTypeDefinitions,
+            ...opts,
+
+            moduleDrivers: moduleTypeDefinitions.map(v => new ModuleTypeDriver(v)),
         };
 
         this.load = this.load.bind(this);
         this.moduleTypes = this.moduleTypes.bind(this);
         this.instances = this.instances.bind(this);
-        this.createModule = this.createModule.bind(this);
-        this.addModuleDefinition = this.addModuleDefinition.bind(this);
+        this.createNewModuleDefinition = this.createNewModuleDefinition.bind(this);
         this.validateDefinition = this.validateDefinition.bind(this);
         this.instantiateDefinition = this.instantiateDefinition.bind(this);
     }
@@ -47,14 +50,18 @@ export class SchemaManager extends (EventEmitter as new () => TypedEmitter<Schem
         return this._opts.moduleTypes;
     }
 
+    moduleDrivers() {
+        return this._opts.moduleDrivers;
+    }
+
     //Returns references to loaded instances.
     instances() {
         return this._instances;
     }
 
     private instantiateDefinition(def: ModuleDefinition<any>) {
-        const tp = this.findTypePair(def.type);
-        const instance = new tp.instance(def);
+        const tp = this.findDriver(def.type);
+        const instance = new ModuleInstance(tp, def);
         this._instances.push(instance);
     }
 
@@ -98,13 +105,10 @@ export class SchemaManager extends (EventEmitter as new () => TypedEmitter<Schem
     }
 
     private validateDefinition(def: ModuleDefinition<any>) {
-        const typePair = this.findTypePair(def.type); //Check type
-
-        def.id = standardizeMac(def.id);
+        const td = this.findDriver(def.type); //Check type
 
         //Validate all module definition configs.
-        def.config = typePair.type.validateConfig(def.config);
-
+        def = td.validateDefinition(def);
         return def;
     }
 
@@ -134,44 +138,28 @@ export class SchemaManager extends (EventEmitter as new () => TypedEmitter<Schem
 
     //Adds a bare-minimum definition to the schema.
     createNewModuleDefinition(typeName: string, id: string) {
-        this.addModuleDefinition({
-            type: typeName,
-            id: id,
-            name: "",
-            config: {},
-            description: "",
-            version: 0,
-        });
+        this.addModule(this.findDriver(typeName).defaultDefinition());
     }
 
-    addModuleDefinition(def: ModuleDefinition<any>) {
-        const typePair = this.findTypePair(def.type);
+    findDriver(typeName: string): ModuleTypeDriver {
+        const typeDriver = this.moduleDrivers().find(v => v.typeName() === typeName);
 
-        //Validate all module definition configs.
-        def.config = typePair.type.validateConfig(def.config);
-
-        this.addModule(def);
-    }
-
-    findTypePair(typeName: string): ModuleTypePair {
-        const typePair = this.moduleTypes().find(v => v.type.typename() === typeName);
-
-        if (!typePair)
+        if (!typeDriver)
             throw new Error(`Couldn't find module with type >${typeName}< when creating definition!`);
 
-        return typePair;
+        return typeDriver;
     }
 
     addModule(def: ModuleDefinition<any>): this {
         console.log(`ADDING: ${def.id}`);
+
+        const typeDriver = this.findDriver(def.type);
+        def = typeDriver.validateDefinition(def);
+
         const s = this.schema();
         s.modules.push(def);
 
         this.load(s);
         return this;
-    }
-
-    createModule(id: string, typeName: string) {
-        this.createNewModuleDefinition(typeName, id);
     }
 }

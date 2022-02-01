@@ -4,11 +4,13 @@ import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 import * as fs from "fs-extra";
 
 export class FileSchemaManager extends SchemaManager {
-    private _filePath: string;
+    private readonly _filePath: string;
 
     constructor(filePath: string) {
         super();
         this._filePath = Path.resolve(filePath);
+
+        //Attach listeners to update/load events to write schema.
         this.on("update", this.writeSchema.bind(this));
         this.on("load", this.writeSchema.bind(this));
 

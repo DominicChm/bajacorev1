@@ -40,7 +40,7 @@
     "mqtt": "^4.3.4",
     "on-change": "^2.2.3",
     "socket.io": "^4.4.0",
-    "typed-emitter": "^1.4.0",
+    "tiny-typed-emitter": "^2.1.0",
     "uuid": "^8.3.2",
     "ws": "^7.5.6"
   },

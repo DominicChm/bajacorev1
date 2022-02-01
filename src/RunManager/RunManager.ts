@@ -4,9 +4,9 @@ import {StoredRun} from "./StoredRun";
 import {RunFileManager} from "./RunFileManager";
 import {RunHandle} from "./RunHandle";
 import EventEmitter from "events";
-import TypedEmitter from "typed-emitter"
 import {v4 as uuidv4} from "uuid";
 import {Capabilties} from "./interfaces/capabilties";
+import {TypedEmitter} from "tiny-typed-emitter";
 
 export type Newable<T> = { new(...args: any[]): T; };
 
@@ -18,7 +18,7 @@ interface RunManagerEvents {
  * Manages all components responsible for managing run data.
  * Central component for creating, removing, reading, and storing runs.
  */
-export class RunManager extends (EventEmitter as new () => TypedEmitter<RunManagerEvents>) {
+export class RunManager extends TypedEmitter<RunManagerEvents> {
     private _fileManager: RunFileManager | undefined;
     private _moduleManager: ModuleManager | undefined;
     private _runs: RunHandle[] = [];

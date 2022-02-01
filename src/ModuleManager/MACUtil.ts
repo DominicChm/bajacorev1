@@ -66,3 +66,8 @@ export function standardizeMac(mac: string) {
 
     return parts.join(":");
 }
+
+
+export function joiMac(value: string, helpers: any): string {
+    return standardizeMac(value);
+}

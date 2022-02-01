@@ -1,50 +1,54 @@
 import Joi from "joi";
 import * as ctypes from "c-type-util"
-import {ModuleType} from "../ModuleManager/ModuleType";
-import {cStruct, CType} from "c-type-util";
-import {ModuleInstance} from "../ModuleManager/ModuleInstance";
-import {ModuleDefinition} from "../ModuleManager/interfaces/ModuleDefinition";
-import {connect} from "mqtt"
-import {MqttRouter} from "../ModuleManager/MqttRouter";
-import {Namespace, Server} from "socket.io";
+import {cStruct} from "c-type-util"
+import {ModuleTypeDefinition} from "../ModuleManager/ModuleTypeDefinition";
 
-export type StorageT = { analogRaw: number }
-export type MqttT = { analogRaw: number }
 export type ConfigT = { config_v: number }
+export type PersistConfigT = {
+    minVoltage: number;
+    psiPerVolt: number;
+    replicated: number;
+}
+
+export type ReplicatedConfigT = {
+    replicated: number;
+}
+
 export type HumanReadableT = { psi: number }
 export type HumanReadableStorageT = { psi: number }
 
-const t = new ModuleType<StorageT, MqttT, ConfigT>({
-    typename: "brake_pressure",
-    configSchema: Joi.object({
-        config_v: Joi.number().default(0)
+export const SensorBrakePressure: ModuleTypeDefinition = {
+    typeName: "brake_pressure",
+
+    // Config
+    // Persistent config is stored and loaded from disk between restarts.
+    // Replicated config is what is sent to the remote module, and has a corresponding serializer (ctype).
+    // Persistent and replicated config do NOT need to be the same - this is desirable.
+    // Identical keys between config types are merged (treated as same)
+    // Persistent config takes priority over replicated!!!!
+    persistentConfigSchema: Joi.object({
+        minVoltage: Joi.number().default(0),
+        psiPerVolt: Joi.number().default(0),
     }),
-    rawStruct: cStruct({analogRaw: ctypes.uint16}),
-    storageStruct: cStruct({analogRaw: ctypes.uint16}),
-});
+    replicatedConfigSchema: Joi.object({
+        replicated: Joi.number().default(123),
+    }),
+    replicatedConfigCType: cStruct({
+        replicated: ctypes.uint16
+    }),
 
-export class SensorBrakePressureInstance extends ModuleInstance<StorageT, MqttT, ConfigT, HumanReadableT, HumanReadableStorageT> {
-    constructor(def: ModuleDefinition<ConfigT>) {
-        super(t, def);
-    }
-
-    protected convertStored(data: StorageT): HumanReadableT {
+    // Raw describes the binary data coming in from the module.
+    // Storage describes the data being stored to/from disk.
+    // Storage should be a sub-type of Raw, such that some raw values might not be stored.
+    rawCType: cStruct({
+        analog: ctypes.uint16
+    }),
+    storageCType: cStruct({
+        analog: ctypes.uint16
+    }),
+    dataRaw2Human(raw: any, config: any): any {
         return {
-            psi: 1
-        };
-    }
-
-    //Can override if additional data needs to be converted with MQTT packets
-    // protected convertMqtt(data: MqttT): HumanReadableStorageT {
-    //     return this.convertStored(data);
-    // }
-
-    //Define API Here
-    private printMessage(msg: string) {
-        console.log(msg);
-    }
-
-
+            psi: raw.analog * config.psiPerVolt + config.minVoltage
+        }
+    },
 }
-
-export default {type: t, instance: SensorBrakePressureInstance}

@@ -1,16 +1,13 @@
 import {StoredRun} from "./StoredRun";
 import fs from "fs-extra"
 import * as Path from "path";
-import {v4, v4 as uuidv4} from 'uuid';
-import {RealtimeRun} from "./RealtimeRun";
-import EventEmitter from "events";
-import TypedEmitter from "typed-emitter";
+import {TypedEmitter} from "tiny-typed-emitter";
 
 interface RunManagerEvents {
     run_change: () => void
 }
 
-export class RunFileManager extends (EventEmitter as new () => TypedEmitter<RunManagerEvents>) {
+export class RunFileManager extends TypedEmitter<RunManagerEvents>{
     private rootDir: string;
     private runs: StoredRun[] = [];
 

@@ -1,21 +1,10 @@
-import {ModuleType} from "./ModuleType";
 import {ModuleDefinition} from "./interfaces/ModuleDefinition";
-import {MqttClient} from "mqtt"
 import {standardizeMac} from "./MACUtil";
-import {MqttRouter} from "./MqttRouter";
-import EventEmitter from "events";
-import TypedEmitter from "typed-emitter";
-import {cloneDeep, merge} from "lodash"
-
+import {cloneDeep} from "lodash"
+import {TypedEmitter} from "tiny-typed-emitter";
 import onChange from 'on-change';
-import {Namespace, Server, Socket} from "socket.io";
-
-//TODO: Pass this as an arg?
-const baseModuleChannel = "car"
-
-interface ModuleInstanceState {
-    connected: boolean;
-}
+import {ConfigT} from "../moduleTypes/SensorBrakePressure";
+import {ModuleTypeDriver} from "./ModuleTypeDriver";
 
 interface ModuleInstanceEvents {
     definition_updated: (definition: ModuleDefinition<any>, breaking: boolean) => void;
@@ -26,55 +15,34 @@ interface ModuleInstanceEvents {
     destroyed: () => void;
 }
 
-export const CHANNELS = {
-    SET_DESCRIPTION: "set_desc",
-    SET_ID: "set_id",
-    SET_NAME: "set_name",
-    SET_VERSION: "set_version",
-}
+export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
 
-export type AnyModuleInstance = ModuleInstance<any, any, any, any, any>;
-
-/**
- * Base class for management and interaction with physical modules through MQTT, as well as their local config and data.
- */
-export abstract class ModuleInstance<StorageStruct,
-    RawStruct extends StorageStruct,
-    ConfigT,
-    HumanReadableStorageT,
-    HumanReadableMqttT extends HumanReadableStorageT> extends (EventEmitter as new () => TypedEmitter<ModuleInstanceEvents>) {
-
-    private readonly _moduleType: ModuleType<StorageStruct, RawStruct, ConfigT>
-    private _mqtt: MqttRouter | undefined;
-    private _namespace: Namespace | undefined;
-    private _metaState: ModuleInstanceState;
-    private _data: RawStruct | undefined;
-    private _definitionUpdated: boolean = false;
+    private readonly _moduleType: ModuleTypeDriver
+    private _data: any | undefined;
     private _destroyed = false;
 
     public _watchedDefinition: ModuleDefinition<ConfigT>;
     private _definition: ModuleDefinition<ConfigT>;
 
-    protected constructor(moduleType: ModuleType<StorageStruct, RawStruct, ConfigT>, moduleDefinition: ModuleDefinition<ConfigT>) {
+    constructor(moduleType: ModuleTypeDriver, moduleDefinition: ModuleDefinition<ConfigT>) {
         super();
         this._moduleType = moduleType;
-        this._metaState = {
-            connected: false
-        }
+
         this._watchedDefinition = {} as any;
         this._definition = {} as any;
 
         this.setDefinition = this.setDefinition.bind(this);
+        this.feedRaw = this.feedRaw.bind(this);
 
         this.setDefinition(moduleDefinition);
-
-        this.handleRawInput = this.handleRawInput.bind(this);
     }
 
-    protected abstract convertStored(data: StorageStruct): HumanReadableStorageT;
+    protected convertStored(rawData: any): any {
 
-    protected convertRaw(data: RawStruct): HumanReadableMqttT {
-        return this.convertStored(data) as HumanReadableMqttT;
+    }
+
+    protected convertRaw(data: any): any {
+        return this._moduleType.dataRaw2Human(data, this.config());
     }
 
     private handleDefinitionChange() {
@@ -110,32 +78,8 @@ export abstract class ModuleInstance<StorageStruct,
         return this._data;
     }
 
-    // public channelPath(channel: string): string {
-    //     return [baseModuleChannel, this.id(), channel].join("/");
-    // }
-
-    // public linkMQTT(mqtt: MqttRouter): this {
-    //     this._mqtt = mqtt;
-    //     this._mqtt.on(this.channelPath("raw"), this.handleRawInput.bind(this));
-    //
-    //     return this;
-    // }
-    //
-    // public linkSocketIo(sioServer: Server): Namespace {
-    //     const namespace = this._namespace = sioServer.of(`/${this.id()}`);
-    //     namespace.on("connection", (socket => {
-    //         console.log(`SIO Connection to >${this.id()}<`);
-    //         socket.on(CHANNELS.SET_ID, this.setId.bind(this));
-    //         socket.on(CHANNELS.SET_DESCRIPTION, this.setDescription.bind(this));
-    //         socket.on(CHANNELS.SET_NAME, this.setName.bind(this));
-    //         socket.on(CHANNELS.SET_VERSION, this.setVersion.bind(this));
-    //     }));
-    //
-    //     return namespace;
-    // }
-
     //TODO: Emit parse errors using eventemitter
-    public handleRawInput(payload: Buffer): RawStruct {
+    public feedRaw(payload: Buffer): any {
         console.log("RAW INPUT :D");
         this.emit("raw_data", payload);
 

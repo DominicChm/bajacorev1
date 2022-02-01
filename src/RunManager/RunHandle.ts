@@ -1,9 +1,6 @@
-import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
-import EventEmitter from "events";
-import TypedEmitter from "typed-emitter";
 import {SchemaManager} from "../SchemaManager/SchemaManager";
-import {CType} from "c-type-util";
 import {FileSchemaManager} from "../SchemaManager/FileSchemaManager";
+import {TypedEmitter} from "tiny-typed-emitter";
 
 interface RunEvents {
     destroyed: () => void;
@@ -33,7 +30,7 @@ export interface PlayOptions {
 }
 
 
-export abstract class RunHandle extends (EventEmitter as new () => TypedEmitter<RunEvents>) {
+export abstract class RunHandle extends TypedEmitter<RunEvents> {
     private readonly _uuid;
     private readonly _runType;
     private readonly _schemaManager: SchemaManager;

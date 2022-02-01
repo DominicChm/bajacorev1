@@ -1,24 +1,15 @@
 import {RealtimeRun} from "../RunManager/RealtimeRun";
 import {v4} from "uuid"
-import {AnyModuleInstance, ModuleInstance} from "./ModuleInstance";
-import {ModuleType} from "./ModuleType";
-import {Newable} from "../RunManager/RunManager";
+import {ModuleInstance} from "./ModuleInstance";
 import {DAQSchema} from "./interfaces/DAQSchema";
 import {connect, MqttClient} from "mqtt";
 import {MqttRouter} from "./MqttRouter";
 import {standardizeMac} from "./MACUtil";
-import EventEmitter from "events";
-import TypedEmitter from "typed-emitter";
-import {SchemaManager} from "../SchemaManager/SchemaManager";
+import {TypedEmitter} from "tiny-typed-emitter";
 
 export interface ModuleManagerOptions {
     mqttUrl: string;
     schemaPath: string;
-}
-
-export interface ModuleTypePair {
-    type: ModuleType<any, any, any>,
-    instance: Newable<ModuleInstance<any, any, any, any, any>>
 }
 
 interface ModuleManagerEvents {
@@ -28,11 +19,10 @@ interface ModuleManagerEvents {
     //schema_patched: (schema: Partial<DAQSchema>) => void;
 }
 
-
-export class ModuleManager extends (EventEmitter as new () => TypedEmitter<ModuleManagerEvents>) {
+export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     //Links to MQTT and handles status and data aggregation and encoding
     private _opts: ModuleManagerOptions;
-    private _moduleInstances: ModuleInstance<any, any, any, any, any>[] = [];
+    private _moduleInstances: ModuleInstance[] = [];
     private readonly _mqtt: MqttClient
     private readonly _router: MqttRouter;
     private readonly _run: RealtimeRun | undefined;
@@ -53,10 +43,10 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
         return this._run?.schemaManager();
     }
 
-    bindSchema(schema: DAQSchema, instances: AnyModuleInstance[]): this {
+    bindSchema(schema: DAQSchema, instances: ModuleInstance[]): this {
         //attach all modules to MQTT.
         for (const i of instances) {
-            const e: [string, any] = [`car/${i.id()}/raw`, i.handleRawInput];
+            const e: [string, any] = [`car/${i.id()}/raw`, i.feedRaw];
             instances.forEach(i => this._router.on(e[0], e[1]));
             this._listenedRawChannels.push(e);
         }
@@ -64,7 +54,7 @@ export class ModuleManager extends (EventEmitter as new () => TypedEmitter<Modul
         return this;
     }
 
-    unbindSchema(schema: DAQSchema, instances: AnyModuleInstance[]) {
+    unbindSchema(schema: DAQSchema, instances: ModuleInstance[]) {
         for (const [event, listener] of this._listenedRawChannels) {
             //Detach MQTT Listeners
             this._router.off(event, listener);
