@@ -118,6 +118,7 @@ export class StoredRun extends RunHandle {
         return this;
     }
 
+    //TODO: Implement periodic size polling.
     size(): number {
         if (this.destroyed())
             return 0;

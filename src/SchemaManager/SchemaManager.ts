@@ -7,6 +7,9 @@ import {TypedEmitter} from "tiny-typed-emitter";
 import {moduleTypeDefinitions} from "../moduleTypes";
 import {ModuleTypeDefinition} from "../ModuleManager/ModuleTypeDefinition";
 import {ModuleTypeDriver} from "../ModuleManager/ModuleTypeDriver";
+import {logger} from "../logging";
+
+const log = logger("SchemaManager");
 
 interface SchemaManagerEvents {
     // Fires on a full (breaking) load.
@@ -76,7 +79,6 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     //Compares an incoming schema with the current one to determine if a full reload is necessary.
     requiresReload(schema: DAQSchema) {
         const idsEqual = isEqualWith(this._schema, schema, (val: any, other: any) => {
-            console.log(val, other);
             return true;
         });
         return schema.modules.length !== this._schema?.modules.length;
@@ -103,14 +105,14 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
 
             this._schema = newSchema;
 
-            console.log("Loaded (Breaking)!");
+            log("Loaded (Breaking)!");
             this.emit("load", this.schema(), this._instances);
         } else {
             schema.modules.forEach((v, i) => {
                 this._instances[i].setDefinition(v);
             });
 
-            console.log("Loaded (Hot)!");
+            log("Loaded (Hot)!");
             this.emit("update", this.schema(), this._instances);
         }
 
@@ -140,6 +142,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         this._schema = null;
         this._instances = [];
 
+        log("Unloaded");
         return this;
     }
 
@@ -179,7 +182,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
      * @param def - the ModuleDefinition to add.
      */
     addModule(def: ModuleDefinition<any>): this {
-        console.log(`ADDING: ${def.id}`);
+        log(`Adding: ${def.id}`);
 
         def = this.findDriver(def.type).validateDefinition(def);
 

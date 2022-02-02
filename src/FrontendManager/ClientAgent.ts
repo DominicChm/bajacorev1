@@ -5,8 +5,10 @@ import {PlaybackManager, PlayOptions, RunHandle} from "../RunManager/RunHandle";
 import onChange from "on-change";
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 import {Capabilties} from "../RunManager/interfaces/capabilties";
-import {RealtimeRun} from "../RunManager/RealtimeRun";
 import {assign} from "lodash";
+import {logger} from "../logging";
+
+const log = logger("ClientAgent");
 
 interface ClientState {
     activeRun: string | null;
@@ -37,7 +39,7 @@ export class ClientAgent {
 
         this.runManager.on("run_change", this.handleRunsUpdate.bind(this));
 
-        console.log("new connection - clientAgent");
+        log("new connection - clientAgent");
         io.on(CHANNELS.DATA_FRAME_REQUEST, this.wh(this.handleFrameRequest));
         io.on(CHANNELS.DATA_PLAY_REQUEST, this.wh(this.handlePlayRequest));
         io.on(CHANNELS.RUN_INIT_REQUEST, this.wh(this.handleRunInitRequest));
@@ -105,7 +107,7 @@ export class ClientAgent {
     }
 
     handleFrameRequest(uuid: string, timestamp: number) {
-        console.log("DATA FRAME!!");
+        log("DATA FRAME!!");
         this.io.emit(CHANNELS.DATA_FRAME, "TEST FRAME :DDD");
     }
 
@@ -183,19 +185,19 @@ export class ClientAgent {
     }
 
     handleRunInitRequest(reqUUID: string) {
-        console.log("INIT REQUESTED");
+        log("INIT REQUESTED");
         this.runManager.beginRunStorage(reqUUID);
     }
 
     handleRunDeleteRequest(uuid: string) {
-        console.log(`DELETING ${uuid}`);
+        log(`DELETING ${uuid}`);
         this.runManager.deleteStoredRun(uuid);
     }
 
 
     emitError(errorMessage: string) {
-        console.log(`emitting error: ${errorMessage}`);
-        console.log(errorMessage);
+        log(`emitting error: ${errorMessage}`, "error");
+        log(errorMessage, "error");
         this.io.emit(CHANNELS.GENERAL_ERROR, errorMessage);
     }
 }
