@@ -1,1 +1,29 @@
-{"name":"DEFAULT","modules":[]}
+{
+  "name": "DEFAULT",
+  "modules": [
+    {
+      "name": "Front BP",
+      "description": "",
+      "id": "00:00:00:00:00:00",
+      "version": 0,
+      "type": "brake_pressure",
+      "config": {
+        "replicated": "123546",
+        "minVoltage": 0.232,
+        "psiPerVolt": 600
+      }
+    },
+    {
+      "name": "Rear BP",
+      "description": "",
+      "id": "00:00:00:00:00:00",
+      "version": 0,
+      "type": "brake_pressure",
+      "config": {
+        "replicated": 123,
+        "minVoltage": 0,
+        "psiPerVolt": 0
+      }
+    }
+  ]
+}

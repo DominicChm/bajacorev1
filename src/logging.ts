@@ -44,7 +44,7 @@ const format = winston.format.combine(
     })(),
     winston.format.colorize(),
     winston.format.printf(({level, message, label, labelColor}) => {
-        const l = labelColor(`[${label}]`.padStart(labelLen + 3))
+        const l = labelColor(`[${label}]`) //.padStart(labelLen + 3)
         return `${l} (${level}): ${message}`;
     })
 );

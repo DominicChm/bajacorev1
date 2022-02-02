@@ -56,7 +56,7 @@ export class ClientAgent {
         //run is activated.
         io.on(CHANNELS.DEACTIVATE_RUN, this.wh(() => this.deactivateRun()));
 
-
+        this.setSchema = this.setSchema.bind(this);
         this.handleClientStateChange();
     }
 
@@ -111,6 +111,11 @@ export class ClientAgent {
         this.io.emit(CHANNELS.DATA_FRAME, "TEST FRAME :DDD");
     }
 
+    setSchema(schema: DAQSchema) {
+        log("SET SCHEMA");
+        this._clientState.schema = schema;
+    }
+
     activateRun(uuid: string) {
         if (this._clientState.activeRun)
             this.deactivateRun();
@@ -122,10 +127,9 @@ export class ClientAgent {
         newState.activeRun = uuid;
 
         newState.schema = activeRun.schemaManager().schema();
-        activeRun
-            ?.schemaManager()
-            .on("load", (schema) => this._clientState.schema = schema)
-            .on("update", (schema) => this._clientState.schema = schema)
+        activeRun?.schemaManager() //TODO: UNLINK THESE EVENTS
+            .on("load", this.setSchema)
+            .on("update", this.setSchema)
 
 
         // Listeners that handle changes in run state. Detached when run is replaced or destroyed.
@@ -134,6 +138,10 @@ export class ClientAgent {
         //Update the deactivateRun listener to apply to the newly active run.
         this.deactivateRun = () => {
             this._activeRun?.off("destroyed", destroyListener);
+            activeRun?.schemaManager() //TODO: UNLINK THESE EVENTS
+                .off("load", this.setSchema)
+                .off("update", this.setSchema)
+
             this.stopPlaying();
 
             this._clientState.activeRun = null;
