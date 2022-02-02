@@ -66,13 +66,6 @@ export abstract class RunHandle extends TypedEmitter<RunEvents> {
         }
     }
 
-    //Signals that this run is being replaced by another.
-    //Unloads this run and fires an event
-    public replace(uuid: string) {
-        this.destroy();
-        this.emit("replaced", uuid);
-    }
-
     destroy() {
         this.removeAllListeners();
         this._destroyed = true;

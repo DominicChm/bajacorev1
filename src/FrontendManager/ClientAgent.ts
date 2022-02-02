@@ -128,15 +128,10 @@ export class ClientAgent {
 
         // Listeners that handle changes in run state. Detached when run is replaced or destroyed.
         const destroyListener = this.wh(() => this.deactivateRun());
-        const replaceListener = (replacementUUID: string) => {
-            this.activateRun(replacementUUID);
-            //TODO: Re-push data frames.
-        }
 
         //Update the deactivateRun listener to apply to the newly active run.
         this.deactivateRun = () => {
             this._activeRun?.off("destroyed", destroyListener);
-            this._activeRun?.off("replaced", replaceListener);
             this.stopPlaying();
 
             this._clientState.activeRun = null;
@@ -145,7 +140,6 @@ export class ClientAgent {
         }
 
         activeRun.on("destroyed", destroyListener);
-        activeRun.on("replaced", replaceListener);
 
         assign(this._clientState, newState);
         this._activeRun = activeRun;

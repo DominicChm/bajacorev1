@@ -9,6 +9,9 @@ export class RealtimeRun extends RunHandle {
     }
 
     play(opts: PlayOptions, callback: (frame: any) => void) {
+        if (!opts)
+            throw new Error("No play options passed!");
+
         if (opts.scale && opts.scale !== 1)
             throw new Error("Can't play a RealtimeRun at a scale not equal to 1!");
 
