@@ -1,6 +1,8 @@
 import * as winston from "winston";
 import chalk from "chalk";
 
+let labelLen = 0; //Used to align log messages.
+
 export type log_fn_t = (msg: string, level?: level_keys_t) => void;
 
 type level_keys_t = "fatal" | "alert" | "error" | "warn" | "info" | "debug" | "net" | "silly";
@@ -14,17 +16,6 @@ const loggerLevels: { [K in level_keys_t]: number } = {
     debug: 5,
     net: 6,
     silly: 7,
-};
-
-const loggerColors: { [K in level_keys_t]: string } = {
-    fatal: "bold black redBG",
-    alert: "bold red",
-    error: "red",
-    warn: "yellow",
-    info: "green",
-    debug: "yellow",
-    net: "blue",
-    silly: "magenta",
 };
 
 class Random {
@@ -44,7 +35,7 @@ class Random {
     }
 }
 
-winston.addColors(loggerColors);
+const hashCode = (s: string) => s.split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0)
 
 const format = winston.format.combine(
     winston.format(info => {
@@ -52,8 +43,10 @@ const format = winston.format.combine(
         return info;
     })(),
     winston.format.colorize(),
-    winston.format.printf(({level, message, label}) =>
-        `${label} (${level}): ${message}`)
+    winston.format.printf(({level, message, label, labelColor}) => {
+        const l = labelColor(`[${label}]`.padStart(labelLen + 3))
+        return `${l} (${level}): ${message}`;
+    })
 );
 
 const logging = winston.createLogger({
@@ -62,14 +55,16 @@ const logging = winston.createLogger({
     levels: loggerLevels,
 });
 
-const rand = new Random(5);
 
 export function logger(moduleName: string): log_fn_t {
+    const color = `#` + (hashCode(moduleName) & 0xFFFFFF).toString(16).padStart(6, '0');
+    labelLen = Math.max(labelLen, moduleName.length);
     return function log(msg: string, level: level_keys_t = "info") {
         logging.log({
             level: level,
             message: msg,
-            label: chalk.hex(rand.nextHexColor())(`[${moduleName}]`)
+            label: moduleName,
+            labelColor: chalk.hex(color)
         });
     };
 }

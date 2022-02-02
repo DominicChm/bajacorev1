@@ -3,13 +3,15 @@ import {RunManager} from "../RunManager/RunManager";
 import {Server} from "http";
 import * as http from "http";
 import {ClientManager} from "./ClientManager";
-import cors from "cors"
+import {logger} from "../logging";
+
+const log = logger("FrontendManager");
 
 export class FrontendManager {
-    private app: Express.Application;
-    private server: Server;
-    private clientManager: ClientManager;
-    private runManager: RunManager;
+    private readonly app: Express.Application;
+    private readonly server: Server;
+    private readonly clientManager: ClientManager;
+    private readonly runManager: RunManager;
 
     constructor(rm: RunManager) {
         this.app = Express();
@@ -17,7 +19,8 @@ export class FrontendManager {
         this.clientManager = new ClientManager(rm, this.server);
         this.runManager = rm;
 
-        this.server.listen(3000, () => console.log("Listening on 3000"));
+        //TODO: Make frontend port a config var!
+        this.server.listen(3000, () => log(`Listening on ${3000}`));
     }
 
     private setupRoutes() {
