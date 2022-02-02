@@ -13,16 +13,16 @@ export interface ModuleManagerOptions {
 }
 
 interface ModuleManagerEvents {
-    schema_load: (schema: DAQSchema, run: RealtimeRun) => void;
-    schema_updated: (schema: DAQSchema) => void;
-    schema_unload: () => void;
-    //schema_patched: (schema: Partial<DAQSchema>) => void;
+
 }
 
+/**
+ * Facilitates interactions with remote modules. Sets up and tears down MQTT and provides a RealtimeRun
+ * to stream data from modules.
+ */
 export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     //Links to MQTT and handles status and data aggregation and encoding
     private _opts: ModuleManagerOptions;
-    private _moduleInstances: ModuleInstance[] = [];
     private readonly _mqtt: MqttClient
     private readonly _router: MqttRouter;
     private readonly _run: RealtimeRun | undefined;
@@ -36,18 +36,25 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
         this._run = new RealtimeRun(v4(), opts.schemaPath);
 
         this._run.schemaManager().on("load", this.bindSchema.bind(this));
-        this._run.schemaManager().on("unload", this.unbindSchema.bind(this));
+        this._run.schemaManager().on("beforeUnload", this.unbindSchema.bind(this));
     }
 
     schemaManager() {
         return this._run?.schemaManager();
     }
 
+    /**
+     * Initializes the moduleManager with the passed Schema and instances.
+     * @param schema
+     * @param instances
+     */
     bindSchema(schema: DAQSchema, instances: ModuleInstance[]): this {
         //attach all modules to MQTT.
         for (const i of instances) {
             const e: [string, any] = [`car/${i.id()}/raw`, i.feedRaw];
             instances.forEach(i => this._router.on(e[0], e[1]));
+
+            //Track subscriptions to unsub when needed.
             this._listenedRawChannels.push(e);
         }
 
@@ -68,15 +75,6 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
             return [this._run];
 
         return [];
-    }
-
-    instance(id: string): any | undefined {
-        id = standardizeMac(id);
-        return this.schemaManager()?.instances().find(m => id === m.id());
-    }
-
-    instances() {
-        return this.schemaManager()?.instances();
     }
 }
 

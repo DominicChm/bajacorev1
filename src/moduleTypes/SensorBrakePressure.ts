@@ -46,9 +46,12 @@ export const SensorBrakePressure: ModuleTypeDefinition = {
     storageCType: cStruct({
         analog: ctypes.uint16
     }),
-    dataRaw2Human(raw: any, config: any): any {
+    raw2Human(raw: any, config: any, stored2Human: any): any {
+        return stored2Human(raw, config);
+    },
+    stored2Human(raw: any, config: any) {
         return {
             psi: raw.analog * config.psiPerVolt + config.minVoltage
         }
-    },
+    }
 }

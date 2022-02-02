@@ -9,13 +9,14 @@ import {ModuleTypeDefinition} from "../ModuleManager/ModuleTypeDefinition";
 import {ModuleTypeDriver} from "../ModuleManager/ModuleTypeDriver";
 
 interface SchemaManagerEvents {
-    //General listeners - fire whenever anything in the schema changes
+    // Fires on a full (breaking) load.
     load: (schema: DAQSchema, instances: ModuleInstance[]) => void;
-    update: (schema: DAQSchema, instances: ModuleInstance[]) => void;
-    unload: (schema: DAQSchema, instances: ModuleInstance[]) => void;
 
-    module_removed: (id: string, schema: DAQSchema) => void;
-    module_added: (id: string, schema: DAQSchema) => void;
+    // Fires on a hot (non-breaking) load.
+    update: (schema: DAQSchema, instances: ModuleInstance[]) => void;
+
+    // Fires before an unload. Should be used to clean up anything reliant on a schema or instances.
+    beforeUnload: (schema: DAQSchema, instances: ModuleInstance[]) => void;
 }
 
 
@@ -23,6 +24,9 @@ export interface SchemaManagerOptions {
     moduleTypes: ModuleTypeDefinition[],
 }
 
+/**
+ * Manages a DAQSchema. Handles mutation, loading, and unloading.
+ */
 export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     private _schema: DAQSchema | null = null;
     private _instances: ModuleInstance[] = [];
@@ -59,9 +63,13 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         return this._instances;
     }
 
+    /**
+     * Creates and adds to this a ModuleInstance based on the passed ModuleDefinition
+     * @param def - The ModuleDefinition to instantiate and load.
+     * @private
+     */
     private instantiateDefinition(def: ModuleDefinition<any>) {
-        const tp = this.findDriver(def.type);
-        const instance = new ModuleInstance(tp, def);
+        const instance = new ModuleInstance(this.findDriver(def.type), def);
         this._instances.push(instance);
     }
 
@@ -74,6 +82,12 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         return schema.modules.length !== this._schema?.modules.length;
     }
 
+    /**
+     * Loads a new schema. If the new schema requires a full reload (a new module is added, or a dependency breaks)
+     * the current schema is unloaded first. If a full reload isn't required, it just updates current instances.
+     * @param schema
+     * @param fullReload
+     */
     load(schema: DAQSchema, fullReload: boolean = false): this {
         if (this.requiresReload(schema)) {
             const newSchema = {
@@ -104,21 +118,24 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         return this;
     }
 
+    /**
+     * Validates and returns a passed module definition, based on its typename.
+     * @param def
+     * @private
+     */
     private validateDefinition(def: ModuleDefinition<any>) {
-        const td = this.findDriver(def.type); //Check type
-
-        //Validate all module definition configs.
-        def = td.validateDefinition(def);
-        return def;
+        return this.findDriver(def.type).validateDefinition(def);
     }
 
-
+    /**
+     * Unloads the current Schema. Fires an unload event.
+     */
     unload(): this {
         if (!this._schema)
             throw new Error("Attempt to unload when no schema loaded!");
 
         //Anything depending on instances should clean up/unload with this event.
-        this.emit("unload", this._schema, this._instances);
+        this.emit("beforeUnload", this._schema, this._instances);
 
         this._schema = null;
         this._instances = [];
@@ -126,6 +143,9 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         return this;
     }
 
+    /**
+     * Returns the current Schema.
+     */
     public schema() {
         if (!this._schema)
             throw new Error("No schema loaded!");
@@ -141,6 +161,10 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         this.addModule(this.findDriver(typeName).defaultDefinition());
     }
 
+    /**
+     * Resolves a typename to a ModuleTypeDriver
+     * @param typeName - The typename that corresponds to a ModuleType
+     */
     findDriver(typeName: string): ModuleTypeDriver {
         const typeDriver = this.moduleDrivers().find(v => v.typeName() === typeName);
 
@@ -150,16 +174,28 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         return typeDriver;
     }
 
+    /**
+     * Validates and adds a moduleDefinition to this schema
+     * @param def - the ModuleDefinition to add.
+     */
     addModule(def: ModuleDefinition<any>): this {
         console.log(`ADDING: ${def.id}`);
 
-        const typeDriver = this.findDriver(def.type);
-        def = typeDriver.validateDefinition(def);
+        def = this.findDriver(def.type).validateDefinition(def);
 
         const s = this.schema();
         s.modules.push(def);
 
         this.load(s);
         return this;
+    }
+
+    /**
+     * Find an instance based on the passed MAC ID.
+     * @param id - The instance MAC to dinf
+     */
+    instance(id: string): any | undefined {
+        id = standardizeMac(id);
+        return this.instances().find(m => id === m.id());
     }
 }

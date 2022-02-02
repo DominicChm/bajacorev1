@@ -1,30 +1,17 @@
 import * as Path from "path";
-import fs, {ensureFile, ensureFileSync, remove, removeSync, existsSync} from "fs-extra";
+import fs from "fs-extra";
 import {PlayOptions, RunHandle} from "./RunHandle";
 import {RealtimeRun} from "./RealtimeRun";
-import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 
 export const paths = {
     lockFile: "lock",
     data: "data.daq",
+    schema: "schema.json"
 }
 
-const testSchema: DAQSchema = {
-    name: "Schema",
-    modules: [
-        {
-            name: "Brake Pressure",
-            id: "AA:BB:CC:DD:EE:FF",
-            description: "Test brake pressure sensor",
-            version: 0,
-            type: "brake_pressure",
-            config: {
-                config_v: 1
-            }
-        }
-    ]
-}
-
+/**
+ * Describes a run that happened in the past. Allows playback and writing of data.
+ */
 export class StoredRun extends RunHandle {
     private readonly rootPath: string;
     private isWriting: boolean;
@@ -33,14 +20,13 @@ export class StoredRun extends RunHandle {
 
     constructor(uuid: string, rootPath: string) {
         //TODO: Read stored schema!
-        super("stored", uuid, Path.resolve(rootPath, "schema.json"));
+        super("stored", uuid, paths.schema);
         this.rootPath = rootPath;
-        this.isWriting = existsSync(this.resolve(paths.lockFile));
-        this.schemaManager().load({name: "STOREDRUNSCHEM", modules: []});
+        this.isWriting = fs.existsSync(this.resolve(paths.lockFile));
     }
 
     public lockForWriting(): this {
-        ensureFileSync(this.lockfilePath());
+        fs.ensureFileSync(this.lockfilePath());
         this.isWriting = true;
         this._writeStream = fs.createWriteStream(this.dataPath());
 
@@ -48,7 +34,7 @@ export class StoredRun extends RunHandle {
     }
 
     public unlock(): this {
-        removeSync(this.lockfilePath());
+        fs.removeSync(this.lockfilePath());
         this.isWriting = false;
 
         this._writeStream?.close();
@@ -112,6 +98,9 @@ export class StoredRun extends RunHandle {
             throw new Error("Link failed - Run doesn't exist!");
 
         this.lockForWriting();
+
+        //Copy the schema from the run we're linking to.
+        this.schemaManager().load(run.schemaManager().schema());
         run.on("format_changed", this.unlink.bind(this));
 
         return this;
@@ -133,8 +122,9 @@ export class StoredRun extends RunHandle {
         if (this.destroyed())
             return 0;
 
-        if ((this.isWriting || !this._size) && existsSync(this.dataPath())) //Only update size if actively writing or no previous size.
+        if ((this.isWriting || !this._size) && fs.existsSync(this.dataPath())) //Only update size if actively writing or no previous size.
             return this._size = fs.statSync(this.dataPath()).size;
+
         else
             return this._size;
     }

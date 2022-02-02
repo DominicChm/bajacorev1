@@ -4,6 +4,9 @@ import {SensorBrakePressure} from "../moduleTypes/SensorBrakePressure";
 import {joiMac} from "./MACUtil";
 import {CType} from "c-type-util";
 
+/**
+ * Drives and allows easy interaction with a ModuleTypeDefinition, which describes a type of module.
+ */
 export class ModuleTypeDriver {
     private readonly _typeDefinition: ModuleTypeDefinition;
     private readonly _combinedConfigSchema: Joi.ObjectSchema;
@@ -82,8 +85,12 @@ export class ModuleTypeDriver {
         return this._typeDefinition;
     }
 
-    dataRaw2Human(raw: any, config: any): any {
-        return this._typeDefinition.dataRaw2Human(raw, config);
+    stored2Human(raw: any, config: any): any {
+        return this._typeDefinition.stored2Human(raw, config);
+    }
+
+    raw2Human(raw: any, config: any): any {
+        return this._typeDefinition.raw2Human(raw, config, this._typeDefinition.stored2Human);
     }
 
     rawStruct(): CType<any> {

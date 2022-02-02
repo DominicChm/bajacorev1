@@ -2,7 +2,9 @@ import {PlaybackManager, PlayOptions, RunHandle} from "./RunHandle";
 import {Stream} from "stream";
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 
-
+/**
+ * Describes a run that's happening "right now". Used for streaming data from modules in real-time.
+ */
 export class RealtimeRun extends RunHandle {
     constructor(uuid: string, schemaPath: string) {
         super("realtime", uuid, schemaPath);

@@ -1,16 +1,20 @@
 import {RunManager} from "./RunManager/RunManager";
 import {ModuleManager} from "./ModuleManager/ModuleManager";
 import {FrontendManager} from "./FrontendManager/FrontendManager";
-import {DAQFileManager} from "./DAQFileManager/DAQFileManager";
+import {DAQPathManager} from "./DAQFileManager/DAQPathManager";
+import {StoredRunManager} from "./RunManager/StoredRunManager";
 
 (async () => {
-    const daqFileManager = new DAQFileManager("./testData", true);
+    const daqFileManager = new DAQPathManager("./testData");
+    const storedRunManager = new StoredRunManager({
+        runDataDirectory: daqFileManager.RunDataPath()
+    });
 
     const moduleManager = new ModuleManager({
-        schemaPath: "C:\\Users\\Domo2\\Documents\\Webstorm\\bajacore\\testData\\schemas\\realtimeSchema.json",
+        schemaPath: daqFileManager.RealtimeSchemaPath(),
         mqttUrl: "mqtt://localhost:1833",
     });
 
-    const runManager = new RunManager(daqFileManager.runFileManager(), moduleManager);
+    const runManager = new RunManager(storedRunManager, moduleManager);
     const frontendManager = new FrontendManager(runManager);
 })();

@@ -1,4 +1,4 @@
-import {connect, MqttClient} from "mqtt";
+import {MqttClient} from "mqtt";
 import EventEmitter from "events";
 import {IPublishPacket} from "mqtt-packet";
 import {IClientPublishOptions} from "mqtt/types/lib/client-options";
@@ -13,18 +13,23 @@ export class MqttRouter extends EventEmitter {
 
     constructor(mqtt: MqttClient) {
         super();
-
         this._mqtt = mqtt;
         this._mqtt.on("message", this.onMqttMessage.bind(this));
     }
 
-    on(eventName: string, listener: (...args: any[]) => void): this {
-        console.log(`Subscribing ${eventName}`)
-        if (!this.eventNames().includes(eventName))
-            this._mqtt.subscribe(eventName);
+    /**
+     * Subscribe to events from the passed MQTT channel.
+     * @param channel - The MQTT Channel to subscribe to.
+     * @param listener
+     */
+    on(channel: string, listener: (...args: any[]) => void): this {
+        console.log(`Subscribing ${channel}`)
 
-        super.on(eventName, listener);
+        // If the channel hasn't been subbed to yet, do it so we start receiving its events.
+        if (!this.eventNames().includes(channel))
+            this._mqtt.subscribe(channel);
 
+        super.on(channel, listener);
         return this;
     }
 
@@ -34,7 +39,7 @@ export class MqttRouter extends EventEmitter {
     }
 
 
-    onMqttMessage(topic: string, payload: Buffer, packet: IPublishPacket) {
+    private onMqttMessage(topic: string, payload: Buffer, packet: IPublishPacket) {
         this.emit(topic, payload, packet);
     }
 }

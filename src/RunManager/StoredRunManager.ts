@@ -3,20 +3,29 @@ import fs from "fs-extra"
 import * as Path from "path";
 import {TypedEmitter} from "tiny-typed-emitter";
 
-interface RunManagerEvents {
+interface StoredRunManagerEvents {
     run_change: () => void
 }
 
-export class RunFileManager extends TypedEmitter<RunManagerEvents>{
-    private rootDir: string;
+interface StoredRunManagerOptions {
+    runDataDirectory: string
+}
+
+export class StoredRunManager extends TypedEmitter<StoredRunManagerEvents> {
     private runs: StoredRun[] = [];
+    private readonly _opts: StoredRunManagerOptions;
 
-    constructor(rootDir: string) {
+    constructor(opts: StoredRunManagerOptions) {
         super();
-        this.rootDir = Path.resolve(rootDir);
-
+        this._opts = {
+            runDataDirectory: Path.resolve(opts.runDataDirectory),
+        };
         this.setupRootDir()
             .catch(console.error);
+    }
+
+    private runDataDir() {
+        return this._opts.runDataDirectory;
     }
 
     public getRuns(): StoredRun[] {
@@ -25,17 +34,17 @@ export class RunFileManager extends TypedEmitter<RunManagerEvents>{
 
     private async readRuns(): Promise<StoredRun[]> {
         //Returns read runs. Ignores directories with a `lock` file in them (those are being written)
-        if (!fs.existsSync(this.rootDir))
-            throw new Error(`Root directory >${this.rootDir}< doesn't exist!`);
+        if (!fs.existsSync(this.runDataDir()))
+            throw new Error(`Root directory >${this.runDataDir()}< doesn't exist!`);
 
-        const runDirs = await fs.readdir(this.rootDir);
-        this.runs = runDirs.map(dir => new StoredRun(dir, Path.resolve(this.rootDir, dir)));
+        const runDirs = await fs.readdir(this.runDataDir());
+        this.runs = runDirs.map(dir => new StoredRun(dir, Path.resolve(this.runDataDir(), dir)));
         return this.runs;
     }
 
     //Sets up the root directory to be ready for runs.
     public async setupRootDir() {
-        fs.ensureDirSync(this.rootDir);
+        fs.ensureDirSync(this.runDataDir());
 
         //Cleanup any locks that exist from a bad shutdown.
         (await this.readRuns()).forEach(r => r.unlock());
@@ -52,6 +61,6 @@ export class RunFileManager extends TypedEmitter<RunManagerEvents>{
     }
 
     private resolve(path: string) {
-        return Path.resolve(this.rootDir, path);
+        return Path.resolve(this.runDataDir(), path);
     }
 }

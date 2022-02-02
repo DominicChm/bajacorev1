@@ -41,7 +41,7 @@ export abstract class RunHandle extends TypedEmitter<RunEvents> {
         this._uuid = uuid;
         this._runType = runType;
         this._schemaManager = new FileSchemaManager(schemaPath);
-        this.schemaManager().on("unload", this.handleUnload);
+        this.schemaManager().on("beforeUnload", this.handleUnload);
         this.schemaManager().on("load", () => this.emit("format_changed"));
     }
 

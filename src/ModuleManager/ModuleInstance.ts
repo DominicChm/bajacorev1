@@ -7,29 +7,31 @@ import {ConfigT} from "../moduleTypes/SensorBrakePressure";
 import {ModuleTypeDriver} from "./ModuleTypeDriver";
 
 interface ModuleInstanceEvents {
-    definition_updated: (definition: ModuleDefinition<any>, breaking: boolean) => void;
+    definitionUpdated: (definition: ModuleDefinition<any>, breaking: boolean) => void;
 
     //Called when a parameter that requires a full reload is changed (like ID)
     raw_data: (data: Buffer) => void;
     data: (data: any) => void;
-    destroyed: () => void;
 }
 
+/**
+ * Manages individual module functions by merging a type definition with an instance definition.
+ * Drives a ModuleTypeDefinition. Handles mutation of module definition and linking events,
+ * as well as data serialization and deserialization.
+ */
 export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
-
-    private readonly _moduleType: ModuleTypeDriver
-    private _data: any | undefined;
-    private _destroyed = false;
-
-    public _watchedDefinition: ModuleDefinition<ConfigT>;
+    private readonly _moduleType: ModuleTypeDriver;
     private _definition: ModuleDefinition<ConfigT>;
+
+    private _data: any | undefined;
 
     constructor(moduleType: ModuleTypeDriver, moduleDefinition: ModuleDefinition<ConfigT>) {
         super();
         this._moduleType = moduleType;
 
-        this._watchedDefinition = {} as any;
+        // Definition is initialized a little later
         this._definition = {} as any;
+
 
         this.setDefinition = this.setDefinition.bind(this);
         this.feedRaw = this.feedRaw.bind(this);
@@ -37,48 +39,59 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
         this.setDefinition(moduleDefinition);
     }
 
-    protected convertStored(rawData: any): any {
-
+    /**
+     * Converts stored data in JSON format (After the "feed" stage) into something understandable by humans.
+     * EX: Converts and scales raw brake pressure values (0-1023) into PSI.
+     * @protected
+     * @param storedData
+     */
+    protected convertStored(storedData: any): any {
+        this._moduleType.stored2Human(storedData, this.config());
     }
 
-    protected convertRaw(data: any): any {
-        return this._moduleType.dataRaw2Human(data, this.config());
+    /**
+     * Converts raw data in JSON format (After the "feed" stage) into something understandable by humans.
+     * EX: Converts and scales raw brake pressure values (0-1023) into PSI.
+     * @protected
+     * @param rawData
+     */
+    protected convertRaw(rawData: any): any {
+        return this._moduleType.raw2Human(rawData, this.config());
     }
 
     private handleDefinitionChange() {
-        this.emit("definition_updated", this.definition(), false);
+        this.emit("definitionUpdated", this.definition(), false);
     }
 
     public setDefinition(def: ModuleDefinition<ConfigT>) {
         console.log("DEF SET");
-        const newDef = cloneDeep(def); //Deep copy definition to leave original intact
-        //Validate definition on construction
-        newDef.config = this._moduleType.validateConfig(newDef.config);
-
-        //Standardize MAC
-        newDef.id = standardizeMac(newDef.id);
+        const newDef = this._moduleType.validateDefinition(cloneDeep(def)); //Deep copy definition to leave original intact
 
         //Setup public definition
-        this._definition = newDef;
-        this._watchedDefinition = onChange(this._definition, this.handleDefinitionChange.bind(this));
+        this._definition = onChange(newDef, this.handleDefinitionChange.bind(this));
 
         this.handleDefinitionChange();
     }
 
 
     public config(): ConfigT {
-        return JSON.parse(JSON.stringify(this._definition.config));
+        return this._definition.config;
     }
 
     public id() {
-        return this._watchedDefinition.id;
+        return this._definition.id;
     }
 
     public data() {
         return this._data;
     }
 
-    //TODO: Emit parse errors using eventemitter
+    /**
+     * Used to feed raw, binary data from a transport layer into the instance.
+     * It parses the data and re-emits it as JSON as well as preserving it for future access.
+     * @param payload
+     * TODO: Emit parse errors using eventemitter
+     */
     public feedRaw(payload: Buffer): any {
         console.log("RAW INPUT :D");
         this.emit("raw_data", payload);
@@ -94,31 +107,5 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
 
     definition() {
         return this._definition;
-    }
-
-    toJSON() {
-        return this._definition; //When serializing, return the definition.
-    }
-
-    //TODO: API type/validity Checks
-    setId(id: string) {
-        this._watchedDefinition.id = id;
-    }
-
-    setName(name: string) {
-        this._watchedDefinition.name = name;
-    }
-
-    setDescription(description: string) {
-        this._watchedDefinition.description = description;
-    }
-
-    setVersion(version: number) {
-        this._watchedDefinition.version = version;
-    }
-
-    destroy() { //TODO: ADD DESTROYED CHECKS TO EVERYTHING
-        this._destroyed = true;
-        this.emit("destroyed");
     }
 }

@@ -40,6 +40,10 @@ export function mac2buf(string: string) {
     return bytes;
 }
 
+/**
+ * Checks and standardizes a passed MAC address.
+ * @param mac
+ */
 export function standardizeMac(mac: string) {
     if (mac == null)
         throw new Error("Passed MAC is undefined!");
