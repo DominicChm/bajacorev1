@@ -201,4 +201,13 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         id = standardizeMac(id);
         return this.instances().find(m => id === m.id());
     }
+
+    rawCType() {
+        for (const instance of this._instances) {
+        }
+    }
+
+    storedCType() {
+
+    }
 }

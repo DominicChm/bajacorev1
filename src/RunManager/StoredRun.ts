@@ -19,7 +19,6 @@ export class StoredRun extends RunHandle {
     private _size: number = 0;
 
     constructor(uuid: string, rootPath: string) {
-        //TODO: Read stored schema!
         super("stored", uuid, Path.resolve(rootPath, paths.schema));
         this.rootPath = rootPath;
         this.isWriting = fs.existsSync(this.resolve(paths.lockFile));
