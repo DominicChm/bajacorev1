@@ -3,6 +3,8 @@ import Joi from "joi";
 import {SensorBrakePressure} from "../moduleTypes/SensorBrakePressure";
 import {joiMac} from "./MACUtil";
 import {CType} from "c-type-util";
+import {v4} from "uuid";
+import {ModuleDefinition} from "./interfaces/ModuleDefinition";
 
 /**
  * Drives and allows easy interaction with a ModuleTypeDefinition, which describes a type of module.
@@ -16,6 +18,7 @@ export class ModuleTypeDriver {
         this._typeDefinition = typeDef;
         this._combinedConfigSchema = this._typeDefinition.replicatedConfigSchema.concat(this._typeDefinition.persistentConfigSchema);
         this._definitionSchema = Joi.object({
+            uuid: Joi.string(),
             name: Joi.string()
                 .default(`New ${typeDef.typeName}`),
             description: Joi.string()
@@ -51,13 +54,25 @@ export class ModuleTypeDriver {
     /**
      * Returns a default module definition for this type.
      */
-    defaultDefinition() {
+    newDefinition() {
         try {
-            const def = Joi.attempt({}, this._definitionSchema, {noDefaults: false});
+            const def = Joi.attempt({uuid: v4()}, this._definitionSchema, {noDefaults: false});
             console.log(def);
             return this.validateDefinition(def);
         } catch (e: any) {
             throw new Error(`Error creating a default definition! MAKE SURE ALL CONFIG SCHEMA FIELDS IN >${this._typeDefinition.typeName}< HAVE A DEFAULT!!! - ${e.message}`);
+        }
+    }
+
+    /**
+     * Creates a new definition with the same name, id, etc... as the passed.
+     */
+    deriveDefinition(definition: ModuleDefinition<any>): ModuleDefinition<any> {
+        return {
+            ...this.newDefinition(),
+            name: definition.name,
+            description: definition.description,
+            id: definition.id,
         }
     }
 

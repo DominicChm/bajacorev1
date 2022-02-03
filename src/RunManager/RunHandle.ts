@@ -4,10 +4,9 @@ import {TypedEmitter} from "tiny-typed-emitter";
 
 interface RunEvents {
     destroyed: () => void;
-    replaced: (replacementUUID: string) => void;
     format_changed: () => void;
-    raw_data: (data: ArrayBuffer) => void;
-    data: (data: any) => void;
+    raw_data: (data: ArrayBuffer, timestamp: number) => void;
+    data: (data: any, timestamp: number) => void;
 }
 
 export class PlaybackManager {
@@ -41,8 +40,8 @@ export abstract class RunHandle extends TypedEmitter<RunEvents> {
         this._uuid = uuid;
         this._runType = runType;
         this._schemaManager = new FileSchemaManager(schemaPath);
-        this.schemaManager().on("beforeUnload", this.handleUnload);
-        this.schemaManager().on("load", () => this.emit("format_changed"));
+        //this.schemaManager().on("beforeUnload", this.handleUnload);
+        //this.schemaManager().on("load", () => this.emit("format_changed"));
     }
 
     handleUnload() {

@@ -3,6 +3,9 @@ import EventEmitter from "events";
 import {IPublishPacket} from "mqtt-packet";
 import {IClientPublishOptions} from "mqtt/types/lib/client-options";
 import {PacketCallback} from "mqtt/types/lib/client";
+import {logger} from "../logging";
+
+const log = logger("MqttRouter");
 
 /**
  * Routes MQTT messages such that individual topics are subscribable.
@@ -23,7 +26,7 @@ export class MqttRouter extends EventEmitter {
      * @param listener
      */
     on(channel: string, listener: (...args: any[]) => void): this {
-        console.log(`Subscribing ${channel}`)
+        log(`Subscribing >${channel}<`)
 
         // If the channel hasn't been subbed to yet, do it so we start receiving its events.
         if (!this.eventNames().includes(channel))

@@ -1,4 +1,5 @@
 export interface ModuleDefinition<ConfigT> {
+    uuid: string,
     name: string,
     description: string,
     id: string //MAC Id.

@@ -1,4 +1,7 @@
 //https://blog.xaymar.com/2020/12/08/fastest-uint8array-to-hex-string-conversion-in-javascript/
+
+const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/
+
 const LUT_HEX_4b = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
 // End Pre-Init
 const LUT_HEX_8b = new Array(0x100);
@@ -71,6 +74,9 @@ export function standardizeMac(mac: string) {
     return parts.join(":");
 }
 
+export function isMac(mac: any) {
+    return typeof mac === "string" && macRegex.test(mac);
+}
 
 export function joiMac(value: string, helpers: any): string {
     return standardizeMac(value);

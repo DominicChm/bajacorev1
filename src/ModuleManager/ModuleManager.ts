@@ -4,17 +4,23 @@ import {ModuleInstance} from "./ModuleInstance";
 import {DAQSchema} from "./interfaces/DAQSchema";
 import {connect, MqttClient} from "mqtt";
 import {MqttRouter} from "./MqttRouter";
-import {standardizeMac} from "./MACUtil";
 import {TypedEmitter} from "tiny-typed-emitter";
+import {logger} from "../logging";
+import {InstanceBinding} from "./InstanceBinding";
+import {performance} from "perf_hooks";
+
+const log = logger("ModuleManager");
 
 export interface ModuleManagerOptions {
     mqttUrl: string;
     schemaPath: string;
+    aggregationWindow: number;
 }
 
 interface ModuleManagerEvents {
 
 }
+
 
 /**
  * Facilitates interactions with remote modules. Sets up and tears down MQTT and provides a RealtimeRun
@@ -26,48 +32,53 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     private readonly _mqtt: MqttClient
     private readonly _router: MqttRouter;
     private readonly _run: RealtimeRun | undefined;
-    private _listenedRawChannels: [string, any][] = [];
+    private _bindings: InstanceBinding[] = [];
 
     constructor(opts: ModuleManagerOptions) {
         super();
         this._opts = opts;
         this._mqtt = connect(opts.mqttUrl);
+        this._mqtt.on("connect", () => log("MQTT Connected!"));
+        this._mqtt.on("error", (e) => log(`MQTT ERROR! >${e.message}<`));
+
         this._router = new MqttRouter(this._mqtt);
         this._run = new RealtimeRun(v4(), opts.schemaPath);
 
-        this._run.schemaManager().on("load", this.bindSchema.bind(this));
-        this._run.schemaManager().on("beforeUnload", this.unbindSchema.bind(this));
+        this._run.schemaManager().on("bindInstance", this.bindInstance.bind(this));
+        this._run.schemaManager().on("unbindInstance", this.unbindInstance.bind(this));
+        this._run.schemaManager().on("rebindInstance", this.rebindInstance.bind(this));
+
+        this._run.schemaManager().initLoadListener(this.initInstances.bind(this));
     }
 
     schemaManager() {
         return this._run?.schemaManager();
     }
 
-    /**
-     * Initializes the moduleManager with the passed Schema and instances.
-     * @param schema
-     * @param instances
-     */
-    bindSchema(schema: DAQSchema, instances: ModuleInstance[]): this {
-        //attach all modules to MQTT.
-        for (const i of instances) {
-            const e: [string, any] = [`car/${i.id()}/raw`, i.feedRaw];
-            instances.forEach(i => this._router.on(e[0], e[1]));
-
-            //Track subscriptions to unsub when needed.
-            this._listenedRawChannels.push(e);
-        }
-
-        return this;
+    initInstances(schema: DAQSchema, instances: ModuleInstance[]) {
+        instances.forEach(this.bindInstance.bind(this));
     }
 
-    unbindSchema(schema: DAQSchema, instances: ModuleInstance[]) {
-        for (const [event, listener] of this._listenedRawChannels) {
-            //Detach MQTT Listeners
-            this._router.off(event, listener);
-        }
+    bindInstance(instance: ModuleInstance) {
+        this._bindings.push(new InstanceBinding(instance, this._router, this.gatherData));
+    }
 
-        this._listenedRawChannels = [];
+    rebindInstance(instance: ModuleInstance) {
+        this.unbindInstance(instance);
+        this.bindInstance(instance);
+    }
+
+    /**
+     * Ingests parsed, JSON data from modules.
+     */
+    private gatherData(data: any, time: number, instance: ModuleInstance, binding: InstanceBinding) {
+        log(data);
+        performance.now();
+    }
+
+    unbindInstance(instance: ModuleInstance) {
+        this._bindings.find(b => b.uuid() === instance.uuid())?.unbind();
+        this._bindings.filter(b => b.uuid() !== instance.uuid());
     }
 
     getRuns(): RealtimeRun[] {

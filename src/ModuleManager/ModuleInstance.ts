@@ -1,17 +1,17 @@
 import {ModuleDefinition} from "./interfaces/ModuleDefinition";
-import {standardizeMac} from "./MACUtil";
+import {isMac, standardizeMac} from "./MACUtil";
 import {cloneDeep} from "lodash"
 import {TypedEmitter} from "tiny-typed-emitter";
 import onChange from 'on-change';
 import {ConfigT} from "../moduleTypes/SensorBrakePressure";
 import {ModuleTypeDriver} from "./ModuleTypeDriver";
 
-interface ModuleInstanceEvents {
+export interface ModuleInstanceEvents {
     definitionUpdated: (definition: ModuleDefinition<any>, breaking: boolean) => void;
 
     //Called when a parameter that requires a full reload is changed (like ID)
-    raw_data: (data: Buffer) => void;
-    data: (data: any) => void;
+    raw_data: (data: Buffer, timestamp: number) => void;
+    data: (data: any, timestamp: number) => void;
 }
 
 /**
@@ -59,11 +59,17 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
         return this._moduleType.raw2Human(rawData, this.config());
     }
 
-    private handleDefinitionChange() {
-        this.emit("definitionUpdated", this.definition(), false);
+    private handleDefinitionChange(path?: string, value?: any) {
+        console.log(isMac(value));
+        this.emit("definitionUpdated", this.definition(), isMac(value));
     }
 
-    public setDefinition(def: ModuleDefinition<ConfigT>) {
+    /**
+     *
+     * @param def
+     * @return {boolean} - Whether the passed definition potentially broke bindings
+     */
+    public setDefinition(def: ModuleDefinition<ConfigT>): boolean {
         console.log("DEF SET");
         const newDef = this._moduleType.validateDefinition(cloneDeep(def)); //Deep copy definition to leave original intact
 
@@ -71,6 +77,7 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
         this._definition = onChange(newDef, this.handleDefinitionChange.bind(this));
 
         this.handleDefinitionChange();
+        return false;
     }
 
 
@@ -80,6 +87,10 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
 
     public id() {
         return this._definition.id;
+    }
+
+    public uuid() {
+        return this._definition.uuid;
     }
 
     public data() {
@@ -93,15 +104,15 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
      * TODO: Emit parse errors using eventemitter
      */
     public feedRaw(payload: Buffer): any {
+        //TODO: PARSE TIMESTAMPS FROM DATA\
         console.log("RAW INPUT :D");
-        this.emit("raw_data", payload);
-
         const data = this._moduleType.rawStruct().readLE(payload.buffer, payload.byteOffset);
-        this.emit("data", data);
 
-        console.log(payload);
-        console.log(data);
+        // console.log(payload);
+        // console.log(data);
 
+        this.emit("raw_data", payload, 0);
+        this.emit("data", data, 0);
         return data;
     }
 

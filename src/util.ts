@@ -7,3 +7,12 @@ export async function isDirEmpty(dir: string): Promise<boolean> {
 export function isDirEmptySync(dir: string): boolean {
     return readdirSync(dir).length <= 0;
 }
+
+export function checkDuplicates<T, idT>(arr: Array<T>, predicate: (value: T) => idT) {
+    const ids = new Set<idT>();
+    arr.forEach((v, i) => {
+        const id = predicate(v);
+        if (ids.has(id))
+            throw new Error(`Duplicate: >${id}<`);
+    });
+}

@@ -1,25 +1,25 @@
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 import {ModuleInstance} from "../ModuleManager/ModuleInstance";
 import {ModuleDefinition} from "../ModuleManager/interfaces/ModuleDefinition";
-import {cloneDeep, isEqualWith} from "lodash";
+import {cloneDeep, isEqual, isEqualWith} from "lodash";
 import {standardizeMac} from "../ModuleManager/MACUtil";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {moduleTypeDefinitions} from "../moduleTypes";
 import {ModuleTypeDefinition} from "../ModuleManager/ModuleTypeDefinition";
 import {ModuleTypeDriver} from "../ModuleManager/ModuleTypeDriver";
 import {logger} from "../logging";
+import {checkDuplicates} from "../util";
 
 const log = logger("SchemaManager");
 
 interface SchemaManagerEvents {
-    // Fires on a full (breaking) load.
-    load: (schema: DAQSchema, instances: ModuleInstance[]) => void;
+    load: (schema: DAQSchema) => void;
+    update: (schema: DAQSchema) => void;
+    unload: (schema: DAQSchema) => void;
 
-    // Fires on a hot (non-breaking) load.
-    update: (schema: DAQSchema, instances: ModuleInstance[]) => void;
-
-    // Fires before an unload. Should be used to clean up anything reliant on a schema or instances.
-    beforeUnload: (schema: DAQSchema, instances: ModuleInstance[]) => void;
+    bindInstance: (instance: ModuleInstance) => void;
+    unbindInstance: (instance: ModuleInstance) => void;
+    rebindInstance: (instance: ModuleInstance) => void;
 }
 
 
@@ -74,6 +74,8 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     private instantiateDefinition(def: ModuleDefinition<any>) {
         const instance = new ModuleInstance(this.findDriver(def.type), def);
         this._instances.push(instance);
+        this.emit("bindInstance", instance);
+        return instance;
     }
 
     //Compares an incoming schema with the current one to determine if a full reload is necessary.
@@ -91,32 +93,51 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
      * @param fullReload
      */
     load(schema: DAQSchema, fullReload: boolean = false): this {
-        if (this.requiresReload(schema)) {
-            const newSchema = {
-                ...schema,
-                modules: schema.modules.map(this.validateDefinition),
-            };
-
-            //Unload current if needed after new schema is validated.
-            if (this._schema)
-                this.unload();
-
-            newSchema.modules.forEach(this.instantiateDefinition);
-
-            this._schema = newSchema;
-
-            log("Loaded (Breaking)!");
-            this.emit("load", this.schema(), this._instances);
-        } else {
-            schema.modules.forEach((v, i) => {
-                this._instances[i].setDefinition(v);
-            });
-
-            log("Loaded (Hot)!");
-            this.emit("update", this.schema(), this._instances);
-        }
+        //Check schema for dupe IDs. Will throw if found.
+        checkDuplicates(schema.modules, (m) => m.uuid);
+        const loadedFlag = !this._schema;
 
 
+        const presentUUIDs = new Set<string>();
+        schema.modules = schema.modules.map(instanceDefinition => {
+            let instance = this.instance(instanceDefinition.uuid);
+
+            //Instantiate missing instances
+            if (!instance)
+                instance = this.instantiateDefinition(instanceDefinition);
+
+            //Re-create instances with type changes
+            else if (instance.definition().type !== instanceDefinition.type) { //Type changed - reinstantiate this definition.
+                const newDef = this.findDriver(instanceDefinition.type).deriveDefinition(instance.definition());
+                instance = this.instantiateDefinition(newDef);
+                log(`TYPECHANGED >${instance.uuid()}<`)
+
+                //Re-bind instances with config changes.
+            } else if (!isEqual(instanceDefinition, instance.definition())) {
+                instance.setDefinition(instanceDefinition);
+                this.emit("rebindInstance", instance);
+                log(`REBIND >${instance.uuid()}<`)
+            }
+
+            presentUUIDs.add(instance.definition().uuid);
+            return instance.definition();
+        });
+
+        //Unbind deleted instances
+        this._instances.filter(i => !presentUUIDs.has(i.uuid()))
+            .forEach(i => this.emit("unbindInstance", i));
+
+        //Then remove them from our held ones
+        this._instances = this._instances.filter(i => presentUUIDs.has(i.uuid()));
+
+        this._schema = schema;
+
+        if (loadedFlag)
+            this.emit("load", this.schema());
+        else
+            this.emit("update", this.schema());
+
+        log("Loaded!");
         return this;
     }
 
@@ -137,7 +158,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
             throw new Error("Attempt to unload when no schema loaded!");
 
         //Anything depending on instances should clean up/unload with this event.
-        this.emit("beforeUnload", this._schema, this._instances);
+        this._instances.forEach(i => this.emit("unbindInstance", i));
 
         this._schema = null;
         this._instances = [];
@@ -161,7 +182,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
 
     //Adds a bare-minimum definition to the schema.
     createNewModuleDefinition(typeName: string, id: string) {
-        this.addModule(this.findDriver(typeName).defaultDefinition());
+        this.addModule(this.findDriver(typeName).newDefinition());
     }
 
     /**
@@ -195,11 +216,19 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
 
     /**
      * Find an instance based on the passed MAC ID.
-     * @param id - The instance MAC to dinf
+     * @param uuid
      */
-    instance(id: string): any | undefined {
-        id = standardizeMac(id);
-        return this.instances().find(m => id === m.id());
+    instance(uuid: string): ModuleInstance | undefined {
+        return this.instances().find(m => uuid === m.uuid());
+    }
+
+    /**
+     * Used to run a load listener on (for example) class instantiation, if a schema has already been loaded.
+     * @param listener
+     */
+    initLoadListener(listener: (schema: DAQSchema, instances: ModuleInstance[]) => void) {
+        if (this._schema)
+            listener(this.schema(), this._instances);
     }
 
     rawCType() {
