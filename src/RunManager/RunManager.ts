@@ -31,6 +31,7 @@ export class RunManager extends TypedEmitter<RunManagerEvents> {
     }
 
     private emitRunsChange() {
+        console.log("EMITTING");
         this.emit("run_change", this.runs());
     }
 
@@ -98,7 +99,9 @@ export class RunManager extends TypedEmitter<RunManagerEvents> {
         const fm = this.checkFM();
         //TODO: Use the play interface!
         const realtimeRun = this.resolveRun(run, RealtimeRun);
-        fm.initRunStorage(uuidv4()).link(realtimeRun);
+        fm.initRunStorage(uuidv4())
+            .link(realtimeRun)
+            .on("unlink", this.emitRunsChange.bind(this));
 
         this.emitRunsChange();
     }

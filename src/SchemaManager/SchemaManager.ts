@@ -17,6 +17,9 @@ interface SchemaManagerEvents {
     update: (schema: DAQSchema) => void;
     unload: (schema: DAQSchema) => void;
 
+    // Emitted when a change that breaks the binary format happens, like a module being added or removed.
+    formatBroken: (schema: DAQSchema) => void;
+
     bindInstance: (instance: ModuleInstance) => void;
     unbindInstance: (instance: ModuleInstance) => void;
     rebindInstance: (instance: ModuleInstance) => void;
@@ -49,7 +52,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         this.instances = this.instances.bind(this);
         this.createNewModuleDefinition = this.createNewModuleDefinition.bind(this);
         this.validateDefinition = this.validateDefinition.bind(this);
-        this.instantiateDefinition = this.instantiateDefinition.bind(this);
+        this.instantiateModuleDefinition = this.instantiateModuleDefinition.bind(this);
     }
 
     //Returns module types.
@@ -71,19 +74,11 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
      * @param def - The ModuleDefinition to instantiate and load.
      * @private
      */
-    private instantiateDefinition(def: ModuleDefinition<any>) {
+    private instantiateModuleDefinition(def: ModuleDefinition<any>) {
         const instance = new ModuleInstance(this.findDriver(def.type), def);
         this._instances.push(instance);
         this.emit("bindInstance", instance);
         return instance;
-    }
-
-    //Compares an incoming schema with the current one to determine if a full reload is necessary.
-    requiresReload(schema: DAQSchema) {
-        const idsEqual = isEqualWith(this._schema, schema, (val: any, other: any) => {
-            return true;
-        });
-        return schema.modules.length !== this._schema?.modules.length;
     }
 
     /**
@@ -96,6 +91,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         //Check schema for dupe IDs. Will throw if found.
         checkDuplicates(schema.modules, (m) => m.uuid);
         const loadedFlag = !this._schema;
+        let formatBrokenFlag = false;
 
 
         const presentUUIDs = new Set<string>();
@@ -103,13 +99,14 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
             let instance = this.instance(instanceDefinition.uuid);
 
             //Instantiate missing instances
-            if (!instance)
-                instance = this.instantiateDefinition(instanceDefinition);
-
-            //Re-create instances with type changes
+            if (!instance) {
+                instance = this.instantiateModuleDefinition(instanceDefinition);
+                formatBrokenFlag ||= true;
+            }
+            //Re-create instances with type changes. Format flag handled by deletion automatically.
             else if (instance.definition().type !== instanceDefinition.type) { //Type changed - reinstantiate this definition.
                 const newDef = this.findDriver(instanceDefinition.type).deriveDefinition(instance.definition());
-                instance = this.instantiateDefinition(newDef);
+                instance = this.instantiateModuleDefinition(newDef);
                 log(`TYPECHANGED >${instance.uuid()}<`)
 
                 //Re-bind instances with config changes.
@@ -124,8 +121,10 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         });
 
         //Unbind deleted instances
-        this._instances.filter(i => !presentUUIDs.has(i.uuid()))
-            .forEach(i => this.emit("unbindInstance", i));
+        const deletionQueue = this._instances.filter(i => !presentUUIDs.has(i.uuid()))
+        formatBrokenFlag ||= deletionQueue.length > 0;
+
+        deletionQueue.forEach(i => this.emit("unbindInstance", i));
 
         //Then remove them from our held ones
         this._instances = this._instances.filter(i => presentUUIDs.has(i.uuid()));
@@ -137,7 +136,11 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         else
             this.emit("update", this.schema());
 
-        log("Loaded!");
+        if(formatBrokenFlag) {
+            log("Format broken");
+            this.emit("formatBroken", this.schema());
+        }
+
         return this;
     }
 

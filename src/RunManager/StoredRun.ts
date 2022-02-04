@@ -20,6 +20,8 @@ export class StoredRun extends RunHandle {
 
     constructor(uuid: string, rootPath: string) {
         super("stored", uuid, Path.resolve(rootPath, paths.schema));
+        this.unlink = this.unlink.bind(this);
+
         this.rootPath = rootPath;
         this.isWriting = fs.existsSync(this.resolve(paths.lockFile));
     }
@@ -35,7 +37,6 @@ export class StoredRun extends RunHandle {
     public unlock(): this {
         fs.removeSync(this.lockfilePath());
         this.isWriting = false;
-
         this._writeStream?.close();
         this._writeStream?.destroy();
 
@@ -100,13 +101,14 @@ export class StoredRun extends RunHandle {
 
         //Copy the schema from the run we're linking to.
         this.schemaManager().load(run.schemaManager().schema());
-        run.on("format_changed", this.unlink.bind(this));
+        run.on("formatChanged", this.unlink);
 
         return this;
     }
 
     unlink(): this {
         this.unlock();
+        this.emit("unlink");
         return this;
     }
 

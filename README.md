@@ -15,7 +15,11 @@ Note I didn't include (substantial) stuff that was completed a long time ago.
 - [ ] Reading and parsing stored data from disk
 - [ ] Implementing play controls for stored.
     - Probably make all controls go through a PlayManager implementation...?
+- [ ] CSV exporting
 
+## Less critical things
+- [ ] File watching schemas
+- [ ] Better schema editing (deleting modules, pretty much :/ )
 ## Ongoing things...
 
 - [ ] Doc
