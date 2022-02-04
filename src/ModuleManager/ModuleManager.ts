@@ -34,8 +34,15 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     private readonly _run: RealtimeRun | undefined;
     private _bindings: InstanceBinding[] = [];
 
+    //TODO: REPLACE THIS SINGLE DISPATCHED DATA OBJECT WITH A REAL TIME-BASED
+    // AGGREGATOR - THIS IS A "GET IT DONE" STRATEGY!!!
+    private _data: any = {};
+
     constructor(opts: ModuleManagerOptions) {
         super();
+        this.dispatchData = this.dispatchData.bind(this);
+        this.gatherData = this.gatherData.bind(this);
+
         this._opts = opts;
         this._mqtt = connect(opts.mqttUrl);
         this._mqtt.on("connect", () => log("MQTT Connected!"));
@@ -49,6 +56,8 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
         this._run.schemaManager().on("rebindInstance", this.rebindInstance.bind(this));
 
         this._run.schemaManager().initLoadListener(this.initInstances.bind(this));
+
+        setInterval(this.dispatchData.bind(this), 1000);
     }
 
     schemaManager() {
@@ -72,8 +81,15 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
      * Ingests parsed, JSON data from modules.
      */
     private gatherData(data: any, time: number, instance: ModuleInstance, binding: InstanceBinding) {
+        console.log(data, this._data);
+        this._data[instance.uuid()] = data;
         log(data);
-        performance.now();
+    }
+
+    // TODO: REPLACE THIS GARBAGE! TIMING WILL N O T BE ACCURATE WITH THIS APPROACH.
+    //  DATA IS SUSCEPTIBLE TO UP TO 500ms DELAYS BC OF WIFI INTERFERENCE!
+    private dispatchData() {
+        this._run?.feedData(this._data, 0);
     }
 
     unbindInstance(instance: ModuleInstance) {

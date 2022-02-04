@@ -30,7 +30,8 @@ export class RealtimeRun extends RunHandle {
     }
 
     //Raw JSON data
-    feedData(data: any) {
-
+    feedData(data: any, timestamp: number) {
+        //console.log(data);
+        this.emit("data", data, timestamp);
     }
 }

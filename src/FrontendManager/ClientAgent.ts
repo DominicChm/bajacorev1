@@ -178,10 +178,8 @@ export class ClientAgent {
     }
 
     stopPlaying() {
-        if (this._activePlay) {
-            this._activePlay.stop();
-            this._clientState.playing = false;
-        }
+        this._activePlay?.stop();
+        this._clientState.playing = false;
     }
 
     handlePlayRequest(opts: PlayOptions) {
