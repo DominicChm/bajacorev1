@@ -51,7 +51,7 @@ export class StoredRun extends RunHandle {
         return Path.resolve(this.rootPath, path);
     }
 
-    public writeData(data: Uint8Array) {
+    public writeRaw(data: Uint8Array) {
         if (!this.isWriting)
             throw new Error("Failed to write to run data - can only write if run is locked!");
 
@@ -59,6 +59,14 @@ export class StoredRun extends RunHandle {
             throw new Error("Failed to write to run data - no write stream!");
 
         this._writeStream.write(data);
+    }
+
+    /**   
+     * Encodes and writes data that matches this run's schema.
+     * @param data
+     */
+    public writeData(data: any) {
+
     }
 
     public writeStream() {
@@ -101,6 +109,9 @@ export class StoredRun extends RunHandle {
 
         //Copy the schema from the run we're linking to.
         this.schemaManager().load(run.schemaManager().schema());
+        run.play({}, frame => {
+            this.writeFrame
+        })
         run.on("formatChanged", this.unlink);
 
         return this;
