@@ -9,6 +9,7 @@ import {ModuleTypeDefinition} from "../ModuleManager/ModuleTypeDefinition";
 import {ModuleTypeDriver} from "../ModuleManager/ModuleTypeDriver";
 import {logger} from "../logging";
 import {checkDuplicates} from "../util";
+import {cStruct, CType} from "c-type-util";
 
 const log = logger("SchemaManager");
 
@@ -77,7 +78,6 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     private instantiateModuleDefinition(def: ModuleDefinition<any>) {
         const instance = new ModuleInstance(this.findDriver(def.type), def);
         this._instances.push(instance);
-        this.emit("bindInstance", instance);
         return instance;
     }
 
@@ -91,28 +91,35 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         //Check schema for dupe IDs. Will throw if found.
         checkDuplicates(schema.modules, (m) => m.uuid);
         const loadedFlag = !this._schema;
-        let formatBrokenFlag = false;
-
 
         const presentUUIDs = new Set<string>();
+        const instances: { [index: string]: ModuleInstance[] } = {
+            new: [],
+            deleted: [],
+            changed: [],
+        }
+
+        // Create a validate
         schema.modules = schema.modules.map(instanceDefinition => {
             let instance = this.instance(instanceDefinition.uuid);
 
             //Instantiate missing instances
             if (!instance) {
                 instance = this.instantiateModuleDefinition(instanceDefinition);
-                formatBrokenFlag ||= true;
+                instances.new.push(instance);
             }
             //Re-create instances with type changes. Format flag handled by deletion automatically.
             else if (instance.definition().type !== instanceDefinition.type) { //Type changed - reinstantiate this definition.
                 const newDef = this.findDriver(instanceDefinition.type).deriveDefinition(instance.definition());
                 instance = this.instantiateModuleDefinition(newDef);
+                instances.new.push(instance);
                 log(`TYPECHANGED >${instance.uuid()}<`)
 
                 //Re-bind instances with config changes.
             } else if (!isEqual(instanceDefinition, instance.definition())) {
                 instance.setDefinition(instanceDefinition);
-                this.emit("rebindInstance", instance);
+
+                instances.changed.push(instance);
                 log(`REBIND >${instance.uuid()}<`)
             }
 
@@ -120,23 +127,25 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
             return instance.definition();
         });
 
+        this._schema = schema;
+
         //Unbind deleted instances
-        const deletionQueue = this._instances.filter(i => !presentUUIDs.has(i.uuid()))
-        formatBrokenFlag ||= deletionQueue.length > 0;
-
-        deletionQueue.forEach(i => this.emit("unbindInstance", i));
-
-        //Then remove them from our held ones
+        instances.deleted = this._instances.filter(i => !presentUUIDs.has(i.uuid()))
         this._instances = this._instances.filter(i => presentUUIDs.has(i.uuid()));
 
-        this._schema = schema;
+        instances.new.forEach(i => this.emit("bindInstance", i));
+        instances.changed.forEach(i => this.emit("rebindInstance", i));
+        instances.deleted.forEach(i => this.emit("unbindInstance", i));
+
+        //Then remove them from our held ones
+
 
         if (loadedFlag)
             this.emit("load", this.schema());
         else
             this.emit("update", this.schema());
 
-        if(formatBrokenFlag) {
+        if (instances.deleted.length > 0 || instances.new.length > 0) {
             log("Format broken");
             this.emit("formatBroken", this.schema());
         }
@@ -239,7 +248,10 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         }
     }
 
-    storedCType() {
+    storedCType(): CType<any> {
+        const members = Object.fromEntries(this
+            .instances().map(i => [i.uuid(), i.typeDriver().storageCType()]))
 
+        return cStruct(members);
     }
 }

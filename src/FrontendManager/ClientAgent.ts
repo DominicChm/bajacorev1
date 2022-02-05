@@ -58,6 +58,8 @@ export class ClientAgent {
 
         this.setSchema = this.setSchema.bind(this);
         this.handleClientStateChange();
+
+        setInterval(this.handleRunsUpdate.bind(this), 1000); //Poll runs at 1s
     }
 
     private handleSchemaUpdateRequest(schema: DAQSchema) {

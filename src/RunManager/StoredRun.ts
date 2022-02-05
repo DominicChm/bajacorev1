@@ -61,12 +61,14 @@ export class StoredRun extends RunHandle {
         this._writeStream.write(data);
     }
 
-    /**   
+    /**
      * Encodes and writes data that matches this run's schema.
      * @param data
      */
-    public writeData(data: any) {
-
+    public writeFrame(data: any) {
+        const buf = this.schemaManager().storedCType().allocLE(data);
+        console.log(buf);
+        this.writeRaw(new Uint8Array(buf));
     }
 
     public writeStream() {
@@ -109,11 +111,18 @@ export class StoredRun extends RunHandle {
 
         //Copy the schema from the run we're linking to.
         this.schemaManager().load(run.schemaManager().schema());
-        run.play({}, frame => {
-            this.writeFrame
-        })
-        run.on("formatChanged", this.unlink);
+        const pm = run.play({}, frame => {
+            this.writeFrame(frame);
+        });
 
+        this.unlink = () => {
+            this.unlock();
+            pm.stop();
+            this.emit("unlink");
+            return this;
+        }
+
+        run.on("formatChanged", this.unlink);
         return this;
     }
 

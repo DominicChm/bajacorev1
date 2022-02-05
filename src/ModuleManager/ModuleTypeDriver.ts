@@ -108,10 +108,13 @@ export class ModuleTypeDriver {
         return this._typeDefinition.raw2Human(raw, config, this._typeDefinition.stored2Human);
     }
 
-    rawStruct(): CType<any> {
+    rawCType(): CType<any> {
         return this._typeDefinition.rawCType;
     }
 
+    storageCType(): CType<any> {
+        return this._typeDefinition.storageCType;
+    }
 }
 
 const d = new ModuleTypeDriver(SensorBrakePressure);

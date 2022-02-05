@@ -106,7 +106,7 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
     public feedRaw(payload: Buffer): any {
         //TODO: PARSE TIMESTAMPS FROM DATA\
         console.log("RAW INPUT :D");
-        const data = this._moduleType.rawStruct().readLE(payload.buffer, payload.byteOffset);
+        const data = this._moduleType.rawCType().readLE(payload.buffer, payload.byteOffset);
 
         // console.log(payload);
         // console.log(data);
@@ -119,4 +119,9 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
     definition() {
         return this._definition;
     }
+
+    typeDriver() {
+        return this._moduleType;
+    }
+
 }

@@ -70,6 +70,8 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
 
     bindInstance(instance: ModuleInstance) {
         this._bindings.push(new InstanceBinding(instance, this._router, this.gatherData));
+
+        this._data = this.schemaManager()?.storedCType().readLE(new Uint8Array(1000).buffer);
     }
 
     rebindInstance(instance: ModuleInstance) {
