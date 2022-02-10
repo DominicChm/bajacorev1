@@ -51,13 +51,13 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
         this._router = new MqttRouter(this._mqtt);
         this._run = new RealtimeRun(v4(), opts.schemaPath);
 
-        this._run.schemaManager().on("bindInstance", this.bindInstance.bind(this));
-        this._run.schemaManager().on("unbindInstance", this.unbindInstance.bind(this));
-        this._run.schemaManager().on("rebindInstance", this.rebindInstance.bind(this));
+        this._run.schemaManager().instanceManager().on("bindInstance", this.bindInstance.bind(this));
+        this._run.schemaManager().instanceManager().on("unbindInstance", this.unbindInstance.bind(this));
+        this._run.schemaManager().instanceManager().on("rebindInstance", this.rebindInstance.bind(this));
 
         this._run.schemaManager().initLoadListener(this.initInstances.bind(this));
 
-        setInterval(this.dispatchData.bind(this), 1000);
+        setInterval(this.dispatchData.bind(this), 100);
     }
 
     schemaManager() {

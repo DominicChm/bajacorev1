@@ -31,7 +31,6 @@ export class RunManager extends TypedEmitter<RunManagerEvents> {
     }
 
     private emitRunsChange() {
-        console.log("EMITTING");
         this.emit("run_change", this.runs());
     }
 

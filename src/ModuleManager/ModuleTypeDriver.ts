@@ -54,10 +54,9 @@ export class ModuleTypeDriver {
     /**
      * Returns a default module definition for this type.
      */
-    newDefinition() {
+    newDefinition(uuid = v4()) {
         try {
-            const def = Joi.attempt({uuid: v4()}, this._definitionSchema, {noDefaults: false});
-            console.log(def);
+            const def = Joi.attempt({uuid}, this._definitionSchema, {noDefaults: false});
             return this.validateDefinition(def);
         } catch (e: any) {
             throw new Error(`Error creating a default definition! MAKE SURE ALL CONFIG SCHEMA FIELDS IN >${this._typeDefinition.typeName}< HAVE A DEFAULT!!! - ${e.message}`);
@@ -65,7 +64,7 @@ export class ModuleTypeDriver {
     }
 
     /**
-     * Creates a new definition with the same name, id, etc... as the passed.
+     * Creates a new definition of this type with the same name, uuid, id, etc... as the passed.
      */
     deriveDefinition(definition: ModuleDefinition<any>): ModuleDefinition<any> {
         return {
@@ -116,7 +115,3 @@ export class ModuleTypeDriver {
         return this._typeDefinition.storageCType;
     }
 }
-
-const d = new ModuleTypeDriver(SensorBrakePressure);
-
-console.log(d.defaultConfig());

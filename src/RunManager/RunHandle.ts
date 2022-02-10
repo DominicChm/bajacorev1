@@ -1,6 +1,7 @@
 import {SchemaManager} from "../SchemaManager/SchemaManager";
 import {FileSchemaManager} from "../SchemaManager/FileSchemaManager";
 import {TypedEmitter} from "tiny-typed-emitter";
+import {PlaybackManager} from "./PlaybackManager";
 
 interface RunEvents {
     destroyed: () => void;
@@ -12,30 +13,10 @@ interface RunEvents {
     link: () => void;
 }
 
-export class PlaybackManager {
-    private readonly stopCB: () => void;
-
-    constructor(stop: () => void) {
-        this.stopCB = stop;
-    }
-
-    stop() {
-        this.stopCB();
-    }
-}
-
-export interface PlayOptions {
-    tStart?: number;
-    tEnd?: number;
-    scale?: number;
-    framerate?: number; //Max fps to play.
-}
-
-
 export abstract class RunHandle extends TypedEmitter<RunEvents> {
     private readonly _uuid;
     private readonly _runType;
-    private readonly _schemaManager: SchemaManager;
+    private readonly _schemaManager: FileSchemaManager;
     private _destroyed = false;
 
     protected constructor(runType: string, uuid: string, schemaPath: string) {
@@ -51,11 +32,9 @@ export abstract class RunHandle extends TypedEmitter<RunEvents> {
         return this._uuid;
     }
 
-    public schemaManager(): SchemaManager {
+    public schemaManager(): FileSchemaManager {
         return this._schemaManager;
     }
-
-    public abstract play(opts: PlayOptions, callback: (frame: any) => void): PlaybackManager;
 
     public toJSON() {
         return {
@@ -72,4 +51,7 @@ export abstract class RunHandle extends TypedEmitter<RunEvents> {
     destroyed(): boolean {
         return this._destroyed;
     }
+
+    abstract getPlayManager(): PlaybackManager;
+
 }

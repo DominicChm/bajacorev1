@@ -1,6 +1,6 @@
-import {PlaybackManager, PlayOptions, RunHandle} from "./RunHandle";
-import {Stream} from "stream";
-import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
+import {RunHandle} from "./RunHandle";
+import {PlaybackManager} from "./PlaybackManager";
+import {RealtimePlaybackManager} from "./RealtimePlaybackManager";
 
 /**
  * Describes a run that's happening "right now". Used for streaming data from modules in real-time.
@@ -10,28 +10,13 @@ export class RealtimeRun extends RunHandle {
         super("realtime", uuid, schemaPath);
     }
 
-    play(opts: PlayOptions, callback: (frame: any) => void) {
-        if (!opts)
-            throw new Error("No play options passed!");
-
-        if (opts.scale && opts.scale !== 1)
-            throw new Error("Can't play a RealtimeRun at a scale not equal to 1!");
-
-        if (opts.tEnd || opts.tStart)
-            throw new Error("Can't specify RealtimeRun start/stop!");
-
-        const stopCB = () => {
-            this.off("data", callback);
-        };
-
-        this.on("data", callback);
-
-        return new PlaybackManager(stopCB);
-    }
-
     //Raw JSON data
     feedData(data: any, timestamp: number) {
         //console.log(data);
         this.emit("data", data, timestamp);
+    }
+
+    getPlayManager(): PlaybackManager {
+        return new RealtimePlaybackManager(this);
     }
 }

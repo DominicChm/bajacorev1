@@ -1,7 +1,11 @@
 import * as Path from "path";
 import fs from "fs-extra";
-import {PlayOptions, RunHandle} from "./RunHandle";
+import {RunHandle} from "./RunHandle";
 import {RealtimeRun} from "./RealtimeRun";
+import {cpSync} from "fs";
+import {PlaybackManager} from "./PlaybackManager";
+import {StoredRunManager} from "./StoredRunManager";
+import {StoredPlaybackManager} from "./StoredPlaybackManager";
 
 export const paths = {
     lockFile: "lock",
@@ -21,9 +25,15 @@ export class StoredRun extends RunHandle {
     constructor(uuid: string, rootPath: string) {
         super("stored", uuid, Path.resolve(rootPath, paths.schema));
         this.unlink = this.unlink.bind(this);
+        this.writeFrame = this.writeFrame.bind(this);
 
         this.rootPath = rootPath;
         this.isWriting = fs.existsSync(this.resolve(paths.lockFile));
+        this.schemaManager().setAllowBreaking(false);
+    }
+
+    getPlayManager(): PlaybackManager {
+        return new StoredPlaybackManager(this);
     }
 
     public lockForWriting(): this {
@@ -71,17 +81,6 @@ export class StoredRun extends RunHandle {
         this.writeRaw(new Uint8Array(buf));
     }
 
-    public writeStream() {
-        if (!this.isWriting)
-            throw new Error("Failed to write to run data - can only write if run is locked!");
-
-        if (!this.writeStream)
-            throw new Error("Failed to write to run data - no write stream!");
-
-        return this.writeStream;
-    }
-
-
     public getFrame(timestamp: number): Uint8Array {
         return new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     }
@@ -94,14 +93,6 @@ export class StoredRun extends RunHandle {
         return this.resolve(paths.lockFile);
     }
 
-    play(opts: PlayOptions, callback: (frame: any) => void): any {
-        return undefined as unknown as any;
-    }
-
-    getHeader(): Uint8Array {
-        return new Uint8Array([]);
-    }
-
     //Links this stored run to a realtime run. It will write chunks from the realtime run until stopped.
     link(run: RealtimeRun): this {
         if (!run)
@@ -110,10 +101,16 @@ export class StoredRun extends RunHandle {
         this.lockForWriting();
 
         //Copy the schema from the run we're linking to.
-        this.schemaManager().load(run.schemaManager().schema());
-        const pm = run.play({}, frame => {
-            this.writeFrame(frame);
-        });
+        this.schemaManager()
+            .setAllowBreaking(true)
+            .load(run.schemaManager().schema())
+            .setAllowBreaking(false);
+
+        const pm = run
+            .getPlayManager()
+            .callback(this.writeFrame)
+            .setFramerate(0)
+            .play();
 
         this.unlink = () => {
             this.unlock();
@@ -121,6 +118,9 @@ export class StoredRun extends RunHandle {
             this.emit("unlink");
             return this;
         }
+
+        //Save a copy of the original schema in case future changes bork it.
+        cpSync(this.schemaManager().filePath(), Path.resolve(Path.dirname(this.schemaManager().filePath()), "schema.json.bak"));
 
         run.on("formatChanged", this.unlink);
         return this;

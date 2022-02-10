@@ -1,18 +1,19 @@
 import {RunManager} from "../RunManager/RunManager";
 import * as sio from "socket.io"
 import {CHANNELS} from "./SIOChannels";
-import {PlaybackManager, PlayOptions, RunHandle} from "../RunManager/RunHandle";
 import onChange from "on-change";
 import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
 import {Capabilties} from "../RunManager/interfaces/capabilties";
 import {assign} from "lodash";
 import {logger} from "../logging";
+import {PlaybackManager, PlaybackManagerState} from "../RunManager/PlaybackManager";
+import {RunHandle} from "../RunManager/RunHandle";
 
 const log = logger("ClientAgent");
 
 interface ClientState {
     activeRun: string | null;
-    playing: boolean;
+    playState: PlaybackManagerState;
     schema: DAQSchema | null;
     capabilities: Capabilties;
     runs: RunHandle[];
@@ -26,6 +27,10 @@ export class ClientAgent {
     private _activePlay: PlaybackManager | null = null;
 
     constructor(io: sio.Socket, rm: RunManager) {
+        this.handleClientStateChange = this.handleClientStateChange.bind(this);
+        this.setSchema = this.setSchema.bind(this);
+        this.emitData = this.emitData.bind(this);
+        this.handleRunsUpdate = this.handleRunsUpdate.bind(this);
         this.io = io;
         this.runManager = rm;
 
@@ -34,10 +39,11 @@ export class ClientAgent {
             schema: null,
             playing: false,
             capabilities: rm.capabilities(),
-            runs: this.runManager.runs()
-        }, this.handleClientStateChange.bind(this));
+            runs: this.runManager.runs(),
+            playState: {playing: false, framerate: 1, position: 0, scale: 1}
+        }, this.handleClientStateChange);
 
-        this.runManager.on("run_change", this.handleRunsUpdate.bind(this));
+        this.runManager.on("run_change", this.handleRunsUpdate);
 
         log("new connection - clientAgent");
         io.on(CHANNELS.DATA_FRAME_REQUEST, this.wh(this.handleFrameRequest));
@@ -56,10 +62,10 @@ export class ClientAgent {
         //run is activated.
         io.on(CHANNELS.DEACTIVATE_RUN, this.wh(() => this.deactivateRun()));
 
-        this.setSchema = this.setSchema.bind(this);
         this.handleClientStateChange();
 
-        setInterval(this.handleRunsUpdate.bind(this), 1000); //Poll runs at 1s
+        //Disable update dispatching for now - Client can't handle it yet.
+        //setInterval(this.handleRunsUpdate.bind(this), 1000); //Poll runs at 1s
     }
 
     private handleSchemaUpdateRequest(schema: DAQSchema) {
@@ -129,7 +135,12 @@ export class ClientAgent {
         newState.activeRun = uuid;
 
         newState.schema = activeRun.schemaManager().schema();
-        activeRun?.schemaManager() //TODO: UNLINK THESE EVENTS
+
+        this._activePlay = activeRun.getPlayManager()
+            .on("stateChanged", (play) => this._clientState.playState = play.state())
+            .callback(this.emitData);
+
+        activeRun?.schemaManager()
             .on("load", this.setSchema)
             .on("update", this.setSchema)
 
@@ -140,7 +151,8 @@ export class ClientAgent {
         //Update the deactivateRun listener to apply to the newly active run.
         this.deactivateRun = () => {
             this._activeRun?.off("destroyed", destroyListener);
-            activeRun?.schemaManager() //TODO: UNLINK THESE EVENTS
+            this._activePlay?.destroy().removeAllListeners("stateChanged");
+            activeRun?.schemaManager()
                 .off("load", this.setSchema)
                 .off("update", this.setSchema)
 
@@ -169,23 +181,12 @@ export class ClientAgent {
         this.io.emit("data", data);
     }
 
-    startPlaying(opts: PlayOptions) {
-        if (!this.clientState().activeRun)
-            throw new Error("Can't start playback - No active run!");
-
-        this.stopPlaying();
-
-        this._clientState.playing = true;
-        this._activePlay = this._activeRun?.play(opts, this.wh(this.emitData)) ?? null;
-    }
-
     stopPlaying() {
         this._activePlay?.stop();
-        this._clientState.playing = false;
     }
 
-    handlePlayRequest(opts: PlayOptions) {
-        this.startPlaying(opts);
+    handlePlayRequest() {
+        this._activePlay?.play();
     }
 
     handleRunStopRequest(uuid: string) {
@@ -205,7 +206,7 @@ export class ClientAgent {
 
     emitError(errorMessage: string) {
         log(`emitting error: ${errorMessage}`, "error");
-        log(errorMessage, "error");
+        //log(errorMessage, "error");
         this.io.emit(CHANNELS.GENERAL_ERROR, errorMessage);
     }
 }

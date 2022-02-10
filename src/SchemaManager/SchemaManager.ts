@@ -10,6 +10,7 @@ import {ModuleTypeDriver} from "../ModuleManager/ModuleTypeDriver";
 import {logger} from "../logging";
 import {checkDuplicates} from "../util";
 import {cStruct, CType} from "c-type-util";
+import {InstanceManager} from "./InstanceManager";
 
 const log = logger("SchemaManager");
 
@@ -20,29 +21,27 @@ interface SchemaManagerEvents {
 
     // Emitted when a change that breaks the binary format happens, like a module being added or removed.
     formatBroken: (schema: DAQSchema) => void;
-
-    bindInstance: (instance: ModuleInstance) => void;
-    unbindInstance: (instance: ModuleInstance) => void;
-    rebindInstance: (instance: ModuleInstance) => void;
 }
 
 
 export interface SchemaManagerOptions {
     moduleTypes: ModuleTypeDefinition[],
+    breakingAllowed: boolean,
 }
-
+//TODO: ADD FRAMERATE/INTERVAL TO THE SCHEMA, AS A BREAKING PARAMETER.
 /**
  * Manages a DAQSchema. Handles mutation, loading, and unloading.
  */
 export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     private _schema: DAQSchema | null = null;
-    private _instances: ModuleInstance[] = [];
+    private _instanceManager: InstanceManager;
     private readonly _opts;
 
     constructor(opts: Partial<SchemaManagerOptions> = {}) {
         super();
         this._opts = {
             moduleTypes: moduleTypeDefinitions,
+            breakingAllowed: true,
             ...opts,
 
             moduleDrivers: moduleTypeDefinitions.map(v => new ModuleTypeDriver(v)),
@@ -50,10 +49,15 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
 
         this.load = this.load.bind(this);
         this.moduleTypes = this.moduleTypes.bind(this);
-        this.instances = this.instances.bind(this);
         this.createNewModuleDefinition = this.createNewModuleDefinition.bind(this);
         this.validateDefinition = this.validateDefinition.bind(this);
-        this.instantiateModuleDefinition = this.instantiateModuleDefinition.bind(this);
+
+        this._instanceManager = new InstanceManager(this);
+    }
+
+    setAllowBreaking(val: boolean): this {
+        this._opts.breakingAllowed = val;
+        return this;
     }
 
     //Returns module types.
@@ -63,22 +67,6 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
 
     moduleDrivers() {
         return this._opts.moduleDrivers;
-    }
-
-    //Returns references to loaded instances.
-    instances() {
-        return this._instances;
-    }
-
-    /**
-     * Creates and adds to this a ModuleInstance based on the passed ModuleDefinition
-     * @param def - The ModuleDefinition to instantiate and load.
-     * @private
-     */
-    private instantiateModuleDefinition(def: ModuleDefinition<any>) {
-        const instance = new ModuleInstance(this.findDriver(def.type), def);
-        this._instances.push(instance);
-        return instance;
     }
 
     /**
@@ -92,60 +80,22 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         checkDuplicates(schema.modules, (m) => m.uuid);
         const loadedFlag = !this._schema;
 
-        const presentUUIDs = new Set<string>();
-        const instances: { [index: string]: ModuleInstance[] } = {
-            new: [],
-            deleted: [],
-            changed: [],
-        }
+        const {
+            loadResults,
+            definitions
+        } = this._instanceManager.loadModuleDefinitions(schema.modules, !this._opts.breakingAllowed);
 
-        // Create a validate
-        schema.modules = schema.modules.map(instanceDefinition => {
-            let instance = this.instance(instanceDefinition.uuid);
-
-            //Instantiate missing instances
-            if (!instance) {
-                instance = this.instantiateModuleDefinition(instanceDefinition);
-                instances.new.push(instance);
-            }
-            //Re-create instances with type changes. Format flag handled by deletion automatically.
-            else if (instance.definition().type !== instanceDefinition.type) { //Type changed - reinstantiate this definition.
-                const newDef = this.findDriver(instanceDefinition.type).deriveDefinition(instance.definition());
-                instance = this.instantiateModuleDefinition(newDef);
-                instances.new.push(instance);
-                log(`TYPECHANGED >${instance.uuid()}<`)
-
-                //Re-bind instances with config changes.
-            } else if (!isEqual(instanceDefinition, instance.definition())) {
-                instance.setDefinition(instanceDefinition);
-
-                instances.changed.push(instance);
-                log(`REBIND >${instance.uuid()}<`)
-            }
-
-            presentUUIDs.add(instance.definition().uuid);
-            return instance.definition();
-        });
-
-        this._schema = schema;
-
-        //Unbind deleted instances
-        instances.deleted = this._instances.filter(i => !presentUUIDs.has(i.uuid()))
-        this._instances = this._instances.filter(i => presentUUIDs.has(i.uuid()));
-
-        instances.new.forEach(i => this.emit("bindInstance", i));
-        instances.changed.forEach(i => this.emit("rebindInstance", i));
-        instances.deleted.forEach(i => this.emit("unbindInstance", i));
-
-        //Then remove them from our held ones
-
+        this._schema = {
+            ...schema,
+            modules: definitions
+        };
 
         if (loadedFlag)
             this.emit("load", this.schema());
         else
             this.emit("update", this.schema());
 
-        if (instances.deleted.length > 0 || instances.new.length > 0) {
+        if (loadResults.deleted > 0 || loadResults.created > 0) {
             log("Format broken");
             this.emit("formatBroken", this.schema());
         }
@@ -163,33 +113,14 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     }
 
     /**
-     * Unloads the current Schema. Fires an unload event.
-     */
-    unload(): this {
-        if (!this._schema)
-            throw new Error("Attempt to unload when no schema loaded!");
-
-        //Anything depending on instances should clean up/unload with this event.
-        this._instances.forEach(i => this.emit("unbindInstance", i));
-
-        this._schema = null;
-        this._instances = [];
-
-        log("Unloaded");
-        return this;
-    }
-
-    /**
      * Returns the current Schema.
      */
     public schema() {
         if (!this._schema)
             throw new Error("No schema loaded!");
 
-        return {
-            ...cloneDeep(this._schema),
-            modules: this._instances.map(m => m.definition())
-        };
+        return cloneDeep(this._schema);
+
     }
 
     //Adds a bare-minimum definition to the schema.
@@ -226,13 +157,6 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         return this;
     }
 
-    /**
-     * Find an instance based on the passed MAC ID.
-     * @param uuid
-     */
-    instance(uuid: string): ModuleInstance | undefined {
-        return this.instances().find(m => uuid === m.uuid());
-    }
 
     /**
      * Used to run a load listener on (for example) class instantiation, if a schema has already been loaded.
@@ -240,18 +164,21 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
      */
     initLoadListener(listener: (schema: DAQSchema, instances: ModuleInstance[]) => void) {
         if (this._schema)
-            listener(this.schema(), this._instances);
+            listener(this.schema(), this._instanceManager.instances());
     }
 
     rawCType() {
-        for (const instance of this._instances) {
-        }
+        // for (const instance of this._instances) {
+        // }
     }
 
     storedCType(): CType<any> {
-        const members = Object.fromEntries(this
-            .instances().map(i => [i.uuid(), i.typeDriver().storageCType()]))
+        const members = Object.fromEntries(this._instanceManager.instances().map(i => [i.uuid(), i.typeDriver().storageCType()]))
 
         return cStruct(members);
+    }
+
+    instanceManager() {
+        return this._instanceManager;
     }
 }

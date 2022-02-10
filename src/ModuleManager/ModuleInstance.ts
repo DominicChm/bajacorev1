@@ -7,8 +7,6 @@ import {ConfigT} from "../moduleTypes/SensorBrakePressure";
 import {ModuleTypeDriver} from "./ModuleTypeDriver";
 
 export interface ModuleInstanceEvents {
-    definitionUpdated: (definition: ModuleDefinition<any>, breaking: boolean) => void;
-
     //Called when a parameter that requires a full reload is changed (like ID)
     raw_data: (data: Buffer, timestamp: number) => void;
     data: (data: any, timestamp: number) => void;
@@ -31,7 +29,6 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
 
         // Definition is initialized a little later
         this._definition = {} as any;
-
 
         this.setDefinition = this.setDefinition.bind(this);
         this.feedRaw = this.feedRaw.bind(this);
@@ -59,24 +56,13 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
         return this._moduleType.raw2Human(rawData, this.config());
     }
 
-    private handleDefinitionChange(path?: string, value?: any) {
-        console.log(isMac(value));
-        this.emit("definitionUpdated", this.definition(), isMac(value));
-    }
-
     /**
      *
      * @param def
      * @return {boolean} - Whether the passed definition potentially broke bindings
      */
     public setDefinition(def: ModuleDefinition<ConfigT>): boolean {
-        console.log("DEF SET");
-        const newDef = this._moduleType.validateDefinition(cloneDeep(def)); //Deep copy definition to leave original intact
-
-        //Setup public definition
-        this._definition = onChange(newDef, this.handleDefinitionChange.bind(this));
-
-        this.handleDefinitionChange();
+        this._definition = this._moduleType.validateDefinition(def); //Deep copy definition to leave original intact
         return false;
     }
 
@@ -104,7 +90,7 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
      * TODO: Emit parse errors using eventemitter
      */
     public feedRaw(payload: Buffer): any {
-        //TODO: PARSE TIMESTAMPS FROM DATA\
+        //TODO: PARSE TIMESTAMPS FROM DATA
         console.log("RAW INPUT :D");
         const data = this._moduleType.rawCType().readLE(payload.buffer, payload.byteOffset);
 
