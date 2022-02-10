@@ -1,33 +1,19 @@
-import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
-import {ModuleInstance} from "../ModuleManager/ModuleInstance";
-import {ModuleDefinition} from "../ModuleManager/interfaces/ModuleDefinition";
-import {cloneDeep, isEqual, isEqualWith} from "lodash";
-import {standardizeMac} from "../ModuleManager/MACUtil";
+import {DAQSchema} from "./interfaces/DAQSchema";
+import {ModuleInstance} from "./ModuleInstance";
+import {ModuleDefinition} from "./interfaces/ModuleDefinition";
+import {cloneDeep} from "lodash";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {moduleTypeDefinitions} from "../moduleTypes";
-import {ModuleTypeDefinition} from "../ModuleManager/ModuleTypeDefinition";
-import {ModuleTypeDriver} from "../ModuleManager/ModuleTypeDriver";
-import {logger} from "../logging";
-import {checkDuplicates} from "../util";
+import {ModuleTypeDriver} from "./ModuleTypeDriver";
+import {logger} from "../Util/logging";
+import {checkDuplicates} from "../Util/util";
 import {cStruct, CType} from "c-type-util";
 import {InstanceManager} from "./InstanceManager";
+import {SchemaManagerEvents} from "./interfaces/SchemaManagerEvents";
+import {SchemaManagerOptions} from "./interfaces/SchemaManagerOptions";
 
 const log = logger("SchemaManager");
 
-interface SchemaManagerEvents {
-    load: (schema: DAQSchema) => void;
-    update: (schema: DAQSchema) => void;
-    unload: (schema: DAQSchema) => void;
-
-    // Emitted when a change that breaks the binary format happens, like a module being added or removed.
-    formatBroken: (schema: DAQSchema) => void;
-}
-
-
-export interface SchemaManagerOptions {
-    moduleTypes: ModuleTypeDefinition[],
-    breakingAllowed: boolean,
-}
 //TODO: ADD FRAMERATE/INTERVAL TO THE SCHEMA, AS A BREAKING PARAMETER.
 /**
  * Manages a DAQSchema. Handles mutation, loading, and unloading.

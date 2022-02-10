@@ -1,5 +1,5 @@
-import {RunHandle} from "./RunHandle";
-import {PlaybackManager} from "./PlaybackManager";
+import {RunHandle} from "../RunHandle";
+import {PlaybackManager} from "../PlaybackManager";
 import {RealtimePlaybackManager} from "./RealtimePlaybackManager";
 
 /**

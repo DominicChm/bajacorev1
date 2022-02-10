@@ -1,4 +1,4 @@
-import {buf2mac, mac2buf, standardizeMac} from "../../src/ModuleManager/MACUtil";
+import {buf2mac, mac2buf, standardizeMac} from "../../src/Util/MACUtil";
 
 describe("standardizeMac", () => {
     it("checks string length", () => {

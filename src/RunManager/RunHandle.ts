@@ -1,17 +1,7 @@
-import {SchemaManager} from "../SchemaManager/SchemaManager";
 import {FileSchemaManager} from "../SchemaManager/FileSchemaManager";
 import {TypedEmitter} from "tiny-typed-emitter";
 import {PlaybackManager} from "./PlaybackManager";
-
-interface RunEvents {
-    destroyed: () => void;
-    formatChanged: () => void;
-    raw_data: (data: ArrayBuffer, timestamp: number) => void;
-    data: (data: any, timestamp: number) => void;
-
-    unlink: () => void;
-    link: () => void;
-}
+import {RunEvents} from "./interfaces/RunEvents";
 
 export abstract class RunHandle extends TypedEmitter<RunEvents> {
     private readonly _uuid;

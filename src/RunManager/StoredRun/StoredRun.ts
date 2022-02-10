@@ -1,10 +1,10 @@
 import * as Path from "path";
 import fs from "fs-extra";
-import {RunHandle} from "./RunHandle";
-import {RealtimeRun} from "./RealtimeRun";
+import {RunHandle} from "../RunHandle";
+import {RealtimeRun} from "../RealtimeRun/RealtimeRun";
 import {cpSync} from "fs";
-import {PlaybackManager} from "./PlaybackManager";
-import {StoredRunManager} from "./StoredRunManager";
+import {PlaybackManager} from "../PlaybackManager";
+import {StoredRunManager} from "../StoredRunManager";
 import {StoredPlaybackManager} from "./StoredPlaybackManager";
 
 export const paths = {
@@ -17,8 +17,8 @@ export const paths = {
  * Describes a run that happened in the past. Allows playback and writing of data.
  */
 export class StoredRun extends RunHandle {
-    private readonly rootPath: string;
-    private isWriting: boolean;
+    private readonly _rootPath: string;
+    private _isWriting: boolean;
     private _writeStream: fs.WriteStream | undefined;
     private _size: number = 0;
 
@@ -27,8 +27,8 @@ export class StoredRun extends RunHandle {
         this.unlink = this.unlink.bind(this);
         this.writeFrame = this.writeFrame.bind(this);
 
-        this.rootPath = rootPath;
-        this.isWriting = fs.existsSync(this.resolve(paths.lockFile));
+        this._rootPath = rootPath;
+        this._isWriting = fs.existsSync(this.resolve(paths.lockFile));
         this.schemaManager().setAllowBreaking(false);
     }
 
@@ -38,7 +38,7 @@ export class StoredRun extends RunHandle {
 
     public lockForWriting(): this {
         fs.ensureFileSync(this.lockfilePath());
-        this.isWriting = true;
+        this._isWriting = true;
         this._writeStream = fs.createWriteStream(this.dataPath());
 
         return this;
@@ -46,7 +46,7 @@ export class StoredRun extends RunHandle {
 
     public unlock(): this {
         fs.removeSync(this.lockfilePath());
-        this.isWriting = false;
+        this._isWriting = false;
         this._writeStream?.close();
         this._writeStream?.destroy();
 
@@ -54,15 +54,15 @@ export class StoredRun extends RunHandle {
     }
 
     public locked(): boolean {
-        return this.isWriting;
+        return this._isWriting;
     }
 
     public resolve(path: string): string {
-        return Path.resolve(this.rootPath, path);
+        return Path.resolve(this._rootPath, path);
     }
 
     public writeRaw(data: Uint8Array) {
-        if (!this.isWriting)
+        if (!this._isWriting)
             throw new Error("Failed to write to run data - can only write if run is locked!");
 
         if (!this._writeStream)
@@ -134,7 +134,7 @@ export class StoredRun extends RunHandle {
 
     delete(): this {
         this.unlock();
-        fs.rmSync(this.rootPath, {recursive: true});
+        fs.rmSync(this._rootPath, {recursive: true});
         this.destroy();
         return this;
     }
@@ -144,7 +144,7 @@ export class StoredRun extends RunHandle {
         if (this.destroyed())
             return 0;
 
-        if ((this.isWriting || !this._size) && fs.existsSync(this.dataPath())) //Only update size if actively writing or no previous size.
+        if ((this._isWriting || !this._size) && fs.existsSync(this.dataPath())) //Only update size if actively writing or no previous size.
             return this._size = fs.statSync(this.dataPath()).size;
 
         else

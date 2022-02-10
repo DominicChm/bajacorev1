@@ -1,4 +1,4 @@
-import {Stream, Transform, TransformCallback} from "stream";
+import {Transform, TransformCallback} from "stream";
 import {CType} from "c-type-util";
 
 export class CTypeStream extends Transform {

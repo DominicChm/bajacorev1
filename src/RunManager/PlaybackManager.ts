@@ -1,16 +1,7 @@
 import {TypedEmitter} from "tiny-typed-emitter";
 import onChange from "on-change";
-
-export interface PlaybackManagerEvents {
-    stateChanged: (manager: PlaybackManager) => void;
-}
-
-export interface PlaybackManagerState {
-    position: number;
-    playing: boolean;
-    scale: number;
-    framerate: number;
-}
+import {PlaybackManagerEvents} from "./interfaces/PlayManagerEvents";
+import {PlaybackManagerState} from "./interfaces/PlayManagerState";
 
 export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents> {
     private _state: PlaybackManagerState;

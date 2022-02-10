@@ -1,4 +1,4 @@
-import {ModuleInstance} from "./ModuleInstance";
+import {ModuleInstance} from "../SchemaManager/ModuleInstance";
 import {MqttRouter} from "./MqttRouter";
 
 export type bindingDataListener = (data: any, time: number, id: ModuleInstance, binding: InstanceBinding) => void;

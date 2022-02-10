@@ -1,4 +1,4 @@
-import {StoredRun} from "./StoredRun";
+import {StoredRun} from "./StoredRun/StoredRun";
 import fs from "fs-extra"
 import * as Path from "path";
 import {TypedEmitter} from "tiny-typed-emitter";
@@ -11,6 +11,9 @@ interface StoredRunManagerOptions {
     runDataDirectory: string
 }
 
+/**
+ * Responsible for managing stored runs
+ */
 export class StoredRunManager extends TypedEmitter<StoredRunManagerEvents> {
     private runs: StoredRun[] = [];
     private readonly _opts: StoredRunManagerOptions;
@@ -50,7 +53,7 @@ export class StoredRunManager extends TypedEmitter<StoredRunManagerEvents> {
         (await this.readRuns()).forEach(r => r.unlock());
     }
 
-    public initRunStorage(uuid: string): StoredRun {
+    public createStoredRun(uuid: string): StoredRun {
         const runFolder = this.resolve(uuid);
         fs.ensureDirSync(runFolder);
 

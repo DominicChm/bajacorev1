@@ -1,11 +1,11 @@
-import {RealtimeRun} from "../RunManager/RealtimeRun";
+import {RealtimeRun} from "../RunManager/RealtimeRun/RealtimeRun";
 import {v4} from "uuid"
-import {ModuleInstance} from "./ModuleInstance";
-import {DAQSchema} from "./interfaces/DAQSchema";
+import {ModuleInstance} from "../SchemaManager/ModuleInstance";
+import {DAQSchema} from "../SchemaManager/interfaces/DAQSchema";
 import {connect, MqttClient} from "mqtt";
 import {MqttRouter} from "./MqttRouter";
 import {TypedEmitter} from "tiny-typed-emitter";
-import {logger} from "../logging";
+import {logger} from "../Util/logging";
 import {InstanceBinding} from "./InstanceBinding";
 import {performance} from "perf_hooks";
 

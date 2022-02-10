@@ -3,7 +3,7 @@ import EventEmitter from "events";
 import {IPublishPacket} from "mqtt-packet";
 import {IClientPublishOptions} from "mqtt/types/lib/client-options";
 import {PacketCallback} from "mqtt/types/lib/client";
-import {logger} from "../logging";
+import {logger} from "../Util/logging";
 
 const log = logger("MqttRouter");
 

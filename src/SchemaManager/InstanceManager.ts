@@ -1,22 +1,17 @@
-/**
- * Creates and manages updates for ModuleInstances
- */
 import {SchemaManager} from "./SchemaManager";
-import {ModuleDefinition} from "../ModuleManager/interfaces/ModuleDefinition";
-import {checkDuplicates} from "../util";
-import {ModuleInstance} from "../ModuleManager/ModuleInstance";
+import {ModuleDefinition} from "./interfaces/ModuleDefinition";
+import {checkDuplicates} from "../Util/util";
+import {ModuleInstance} from "./ModuleInstance";
 import {isEqual} from "lodash";
-import {logger} from "../logging";
+import {logger} from "../Util/logging";
 import {TypedEmitter} from "tiny-typed-emitter";
+import {InstanceManagerEvents} from "./interfaces/InstanceManagerEvents";
 
 const log = logger("InstanceManager");
 
-interface InstanceManagerEvents {
-    bindInstance: (instance: ModuleInstance) => void;
-    unbindInstance: (instance: ModuleInstance) => void;
-    rebindInstance: (instance: ModuleInstance) => void;
-}
-
+/**
+ * Creates and manages updates for ModuleInstances
+ */
 export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
     private _schemaManager: SchemaManager;
     private _instances: Map<string, ModuleInstance> = new Map();

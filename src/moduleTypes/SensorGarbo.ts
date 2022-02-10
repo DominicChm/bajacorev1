@@ -1,7 +1,7 @@
 import Joi from "joi";
 import * as ctypes from "c-type-util"
 import {cStruct} from "c-type-util"
-import {ModuleTypeDefinition} from "../ModuleManager/ModuleTypeDefinition";
+import {ModuleTypeDefinition} from "../SchemaManager/interfaces/ModuleTypeDefinition";
 
 export const SensorGarbo: ModuleTypeDefinition = {
     typeName: "garbo",

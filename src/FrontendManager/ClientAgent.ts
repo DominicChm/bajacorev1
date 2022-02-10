@@ -2,12 +2,13 @@ import {RunManager} from "../RunManager/RunManager";
 import * as sio from "socket.io"
 import {CHANNELS} from "./SIOChannels";
 import onChange from "on-change";
-import {DAQSchema} from "../ModuleManager/interfaces/DAQSchema";
+import {DAQSchema} from "../SchemaManager/interfaces/DAQSchema";
 import {Capabilties} from "../RunManager/interfaces/capabilties";
 import {assign} from "lodash";
-import {logger} from "../logging";
-import {PlaybackManager, PlaybackManagerState} from "../RunManager/PlaybackManager";
+import {logger} from "../Util/logging";
+import {PlaybackManager} from "../RunManager/PlaybackManager";
 import {RunHandle} from "../RunManager/RunHandle";
+import {PlaybackManagerState} from "../RunManager/interfaces/PlayManagerState";
 
 const log = logger("ClientAgent");
 

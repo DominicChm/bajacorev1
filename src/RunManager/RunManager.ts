@@ -1,6 +1,6 @@
-import {RealtimeRun} from "./RealtimeRun";
+import {RealtimeRun} from "./RealtimeRun/RealtimeRun";
 import {ModuleManager} from "../ModuleManager/ModuleManager";
-import {StoredRun} from "./StoredRun";
+import {StoredRun} from "./StoredRun/StoredRun";
 import {StoredRunManager} from "./StoredRunManager";
 import {RunHandle} from "./RunHandle";
 import {v4 as uuidv4} from "uuid";
@@ -98,7 +98,7 @@ export class RunManager extends TypedEmitter<RunManagerEvents> {
         const fm = this.checkFM();
         //TODO: Use the play interface!
         const realtimeRun = this.resolveRun(run, RealtimeRun);
-        fm.initRunStorage(uuidv4())
+        fm.createStoredRun(uuidv4())
             .link(realtimeRun)
             .on("unlink", this.emitRunsChange.bind(this));
 

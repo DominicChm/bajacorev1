@@ -1,16 +1,8 @@
 import {ModuleDefinition} from "./interfaces/ModuleDefinition";
-import {isMac, standardizeMac} from "./MACUtil";
-import {cloneDeep} from "lodash"
 import {TypedEmitter} from "tiny-typed-emitter";
-import onChange from 'on-change';
 import {ConfigT} from "../moduleTypes/SensorBrakePressure";
 import {ModuleTypeDriver} from "./ModuleTypeDriver";
-
-export interface ModuleInstanceEvents {
-    //Called when a parameter that requires a full reload is changed (like ID)
-    raw_data: (data: Buffer, timestamp: number) => void;
-    data: (data: any, timestamp: number) => void;
-}
+import {ModuleInstanceEvents} from "./interfaces/ModuleInstanceEvents";
 
 /**
  * Manages individual module functions by merging a type definition with an instance definition.

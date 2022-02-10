@@ -3,7 +3,7 @@ import {RunManager} from "../RunManager/RunManager";
 import {Server} from "http";
 import * as http from "http";
 import {ClientManager} from "./ClientManager";
-import {logger} from "../logging";
+import {logger} from "../Util/logging";
 
 const log = logger("FrontendManager");
 

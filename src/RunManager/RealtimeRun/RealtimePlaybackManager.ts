@@ -1,4 +1,4 @@
-import {PlaybackManager} from "./PlaybackManager";
+import {PlaybackManager} from "../PlaybackManager";
 import {RealtimeRun} from "./RealtimeRun";
 
 export class RealtimePlaybackManager extends PlaybackManager {
