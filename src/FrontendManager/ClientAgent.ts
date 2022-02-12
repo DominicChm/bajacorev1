@@ -38,17 +38,21 @@ export class ClientAgent {
         this._clientState = onChange({
             activeRun: null,
             schema: null,
-            playing: false,
             capabilities: rm.capabilities(),
             runs: this.runManager.runs(),
             playState: {playing: false, framerate: 1, position: 0, scale: 1}
         }, this.handleClientStateChange);
 
-        this.runManager.on("run_change", this.handleRunsUpdate);
+        io.on("disconnect", () => console.log("DISCON"));
 
+        this.runManager.on("run_change", this.handleRunsUpdate);
         log("new connection - clientAgent");
         io.on(CHANNELS.DATA_FRAME_REQUEST, this.wh(this.handleFrameRequest));
-        io.on(CHANNELS.DATA_PLAY_REQUEST, this.wh(this.handlePlayRequest));
+
+        io.on(CHANNELS.PLAY_START, this.wh(this.handlePlayStartRequest));
+        io.on(CHANNELS.PLAY_STOP, this.wh(this.handlePlayStopRequest));
+        io.on(CHANNELS.PLAY_FRAMERATE, this.wh(this.handlePlayFramerateRequest));
+
         io.on(CHANNELS.RUN_INIT_REQUEST, this.wh(this.handleRunInitRequest));
         io.on(CHANNELS.RUN_STOP_REQUEST, this.wh(this.handleRunStopRequest));
         io.on(CHANNELS.RUN_DELETE_REQUEST, this.wh(this.handleRunDeleteRequest));
@@ -112,6 +116,7 @@ export class ClientAgent {
     }
 
     handleClientStateChange(path?: string, value?: any, previousValue?: any, name?: any) {
+        console.log("EMIT STATE");
         this.io.emit(CHANNELS.CLIENT_STATE, this.clientState());
     }
 
@@ -138,7 +143,11 @@ export class ClientAgent {
         newState.schema = activeRun.schemaManager().schema();
 
         this._activePlay = activeRun.getPlayManager()
-            .on("stateChanged", (play) => this._clientState.playState = play.state())
+            .setFramerate(10)
+            .on("stateChanged", (play) => {
+                this._clientState.playState = play.state();
+            })
+            //.on("stateChanged", (play) => console.log("STATE CHANGE", play.state(), this))
             .callback(this.emitData);
 
         activeRun?.schemaManager()
@@ -186,8 +195,16 @@ export class ClientAgent {
         this._activePlay?.stop();
     }
 
-    handlePlayRequest() {
+    handlePlayStartRequest() {
         this._activePlay?.play();
+    }
+
+    handlePlayStopRequest() {
+        this._activePlay?.stop();
+    }
+
+    handlePlayFramerateRequest(rate: number) {
+        this._activePlay?.setFramerate(rate);
     }
 
     handleRunStopRequest(uuid: string) {

@@ -1,7 +1,10 @@
 export const CHANNELS = {
     DATA_FRAME: "frame",
     DATA_FRAME_REQUEST: "req_frame",
-    DATA_PLAY_REQUEST: "req_play",
+
+    PLAY_START: "play_start",
+    PLAY_STOP: "play_stop",
+    PLAY_FRAMERATE: "play_framerate",
 
     RUN_HEADER_REQUEST: "run_head_req",
     RUNS_LIST: "runs_list",

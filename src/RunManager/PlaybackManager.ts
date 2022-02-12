@@ -36,8 +36,8 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
     }
 
     stop(): PlaybackManager {
-        this._state.playing = false;
         this._frameIsDebounced = false;
+        this._state.playing = false;
         return this;
     };
 

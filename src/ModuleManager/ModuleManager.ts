@@ -8,6 +8,7 @@ import {TypedEmitter} from "tiny-typed-emitter";
 import {logger} from "../Util/logging";
 import {InstanceBinding} from "./InstanceBinding";
 import {performance} from "perf_hooks";
+import NanoTimer from "nanotimer";
 
 const log = logger("ModuleManager");
 
@@ -31,8 +32,9 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     private _opts: ModuleManagerOptions;
     private readonly _mqtt: MqttClient
     private readonly _router: MqttRouter;
-    private readonly _run: RealtimeRun | undefined;
+    private readonly _run: RealtimeRun;
     private _bindings: InstanceBinding[] = [];
+    private _frameTimer: NanoTimer;
 
     //TODO: REPLACE THIS SINGLE DISPATCHED DATA OBJECT WITH A REAL TIME-BASED
     // AGGREGATOR - THIS IS A "GET IT DONE" STRATEGY!!!
@@ -55,13 +57,23 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
         this._run.schemaManager().instanceManager().on("unbindInstance", this.unbindInstance.bind(this));
         this._run.schemaManager().instanceManager().on("rebindInstance", this.rebindInstance.bind(this));
 
+        this._run.schemaManager().on("formatBroken", this.onFormatBroken.bind(this));
         this._run.schemaManager().initLoadListener(this.initInstances.bind(this));
 
-        setInterval(this.dispatchData.bind(this), 100);
+        this._frameTimer = new NanoTimer()
+        this._frameTimer.setInterval(this.dispatchData.bind(this), '', `${this._run.schemaManager().frameInterval()}m`);
+    }
+
+    /**
+     * Updates the framerate timer when the DAQ schema has a breaking change (possibly framerate).
+     */
+    onFormatBroken() {
+        this._frameTimer.clearInterval();
+        this._frameTimer.setInterval(this.dispatchData.bind(this), '', `${this._run.schemaManager().frameInterval()}m`);
     }
 
     schemaManager() {
-        return this._run?.schemaManager();
+        return this._run.schemaManager();
     }
 
     initInstances(schema: DAQSchema, instances: ModuleInstance[]) {

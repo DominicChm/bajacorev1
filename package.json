@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@types/lodash": "^4.14.178",
+    "@types/nanotimer": "^0.3.0",
     "c-type-util": "^3.0.0",
     "chalk": "^4.1.2",
     "express": "^4.17.1",

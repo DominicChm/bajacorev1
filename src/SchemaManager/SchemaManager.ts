@@ -55,6 +55,10 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         return this._opts.moduleDrivers;
     }
 
+    doesNewSchemaBreak(schema: DAQSchema) {
+        return schema.frameInterval !== this.frameInterval();
+    }
+
     /**
      * Loads a new schema. If the new schema requires a full reload (a new module is added, or a dependency breaks)
      * the current schema is unloaded first. If a full reload isn't required, it just updates current instances.
@@ -71,6 +75,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
             definitions
         } = this._instanceManager.loadModuleDefinitions(schema.modules, !this._opts.breakingAllowed);
 
+        const broken = this.doesNewSchemaBreak(schema);
         this._schema = {
             ...schema,
             modules: definitions
@@ -81,7 +86,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         else
             this.emit("update", this.schema());
 
-        if (loadResults.deleted > 0 || loadResults.created > 0) {
+        if (loadResults.deleted > 0 || loadResults.created > 0 || broken) {
             log("Format broken");
             this.emit("formatBroken", this.schema());
         }
@@ -166,5 +171,9 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
 
     instanceManager() {
         return this._instanceManager;
+    }
+
+    frameInterval() {
+        return this._schema?.frameInterval;
     }
 }

@@ -40,7 +40,7 @@ export class StoredPlaybackManager extends PlaybackManager {
     play(): PlaybackManager {
         this._streamMeter = fs.createReadStream(this._run.dataPath())
             .pipe(new CTypeStream(this._run.schemaManager().storedCType()))
-            .pipe(new StreamMeter(100))
+            .pipe(new StreamMeter(this._run.schemaManager().frameInterval()))
             .on("data", this.meterData);
 
         return super.play();
