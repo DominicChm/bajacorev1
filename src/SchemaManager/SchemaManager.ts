@@ -176,4 +176,8 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     frameInterval() {
         return this._schema?.frameInterval;
     }
+
+    isLoaded() {
+        return !!this._schema;
+    }
 }

@@ -33,8 +33,26 @@ export class StoredPlaybackManager extends PlaybackManager {
     }
 
     //TODO: MAKE SURE THIS LANDS ON A MULTIPLE OF THE TYPE.
+    //Seeks to a point in the run. Time should be in ms.
     seekTo(time?: number): PlaybackManager {
-        throw new Error("Can't seek a realtime run");
+        let frameInterval = this._run.schemaManager().frameInterval();
+
+        if (time == null || frameInterval == null) return this;
+        const position = Math.floor(time / frameInterval);
+        super.seekTo(position);
+
+        // Read the current frame and callback it to update the client.
+        fs.open(this._run.dataPath(), 'r', (status, fd) => {
+            if (status) throw new Error(status.message);
+            const ct = this._run.schemaManager().storedCType();
+            const b = Buffer.alloc(ct.size);
+            fs.read(fd, b, 0, ct.size, position * ct.size, (err, num) => {
+                console.log(b);
+                this._callback(ct.readLE(b), time);
+            });
+        });
+
+        return this;
     }
 
     play(): PlaybackManager {

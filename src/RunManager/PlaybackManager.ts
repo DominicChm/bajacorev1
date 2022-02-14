@@ -41,9 +41,9 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
         return this;
     };
 
-    seekTo(time?: number): PlaybackManager {
+    seekTo(position: number): PlaybackManager {
         this.stop();
-        if (time != null) this._state.position = time;
+        this._state.position = position;
         return this;
     };
 

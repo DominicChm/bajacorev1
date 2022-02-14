@@ -20,6 +20,7 @@ interface ClientState {
     runs: RunHandle[];
 }
 
+//TODO: SEPARATE STATE TRANSMISSION CHANNELS
 export class ClientAgent {
     private io: sio.Socket;
     private runManager: RunManager;
@@ -52,6 +53,7 @@ export class ClientAgent {
         io.on(CHANNELS.PLAY_START, this.wh(this.handlePlayStartRequest));
         io.on(CHANNELS.PLAY_STOP, this.wh(this.handlePlayStopRequest));
         io.on(CHANNELS.PLAY_FRAMERATE, this.wh(this.handlePlayFramerateRequest));
+        io.on("play_seek", this.wh(this.handleSeekRequest))
 
         io.on(CHANNELS.RUN_INIT_REQUEST, this.wh(this.handleRunInitRequest));
         io.on(CHANNELS.RUN_STOP_REQUEST, this.wh(this.handleRunStopRequest));
@@ -71,6 +73,10 @@ export class ClientAgent {
 
         //Disable update dispatching for now - Client can't handle it yet.
         //setInterval(this.handleRunsUpdate.bind(this), 1000); //Poll runs at 1s
+    }
+
+    private handleSeekRequest(time: number) {
+        this._activePlay?.seekTo(time);
     }
 
     private handleSchemaUpdateRequest(schema: DAQSchema) {
@@ -196,6 +202,7 @@ export class ClientAgent {
     }
 
     handlePlayStartRequest() {
+        if(!this._activePlay) throw new Error("Can't play - no active run!")
         this._activePlay?.play();
     }
 
@@ -204,6 +211,7 @@ export class ClientAgent {
     }
 
     handlePlayFramerateRequest(rate: number) {
+        if(!this._activePlay) throw new Error("Can't set framerate - no active run!")
         this._activePlay?.setFramerate(rate);
     }
 
