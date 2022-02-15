@@ -36,6 +36,7 @@ export abstract class RunHandle extends TypedEmitter<RunEvents> {
     destroy() {
         this.removeAllListeners();
         this._destroyed = true;
+        this.emit("destroyed");
     }
 
     destroyed(): boolean {

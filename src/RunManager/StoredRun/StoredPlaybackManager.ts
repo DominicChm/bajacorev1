@@ -32,7 +32,6 @@ export class StoredPlaybackManager extends PlaybackManager {
         return super.setFramerate(rate);
     }
 
-    //TODO: MAKE SURE THIS LANDS ON A MULTIPLE OF THE TYPE.
     //Seeks to a point in the run. Time should be in ms.
     seekTo(time?: number): PlaybackManager {
         let frameInterval = this._run.schemaManager().frameInterval();

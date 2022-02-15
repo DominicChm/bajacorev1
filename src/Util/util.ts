@@ -16,3 +16,15 @@ export function checkDuplicates<T, idT>(arr: Array<T>, predicate: (value: T) => 
             throw new Error(`Duplicate: >${id}<`);
     });
 }
+
+export function bindClass(c: any) {
+    // Get all defined class methods
+    const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(c));
+
+    // Bind all methods
+    methods
+        .filter(method => (method !== 'constructor'))
+        .forEach((method) => {
+            c[method] = c[method].bind(c);
+        });
+}

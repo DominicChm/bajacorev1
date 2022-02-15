@@ -1,97 +1,108 @@
 import {RunManager} from "../RunManager/RunManager";
 import * as sio from "socket.io"
 import {CHANNELS} from "./SIOChannels";
-import onChange from "on-change";
 import {DAQSchema} from "../SchemaManager/interfaces/DAQSchema";
-import {Capabilties} from "../RunManager/interfaces/capabilties";
-import {assign} from "lodash";
 import {logger} from "../Util/logging";
 import {PlaybackManager} from "../RunManager/PlaybackManager";
 import {RunHandle} from "../RunManager/RunHandle";
-import {PlaybackManagerState} from "../RunManager/interfaces/PlayManagerState";
+import {bindClass} from "../Util/util";
 
 const log = logger("ClientAgent");
 
-interface ClientState {
-    activeRun: string | null;
-    playState: PlaybackManagerState;
-    schema: DAQSchema | null;
-    capabilities: Capabilties;
-    runs: RunHandle[];
-}
-
 //TODO: SEPARATE STATE TRANSMISSION CHANNELS
 export class ClientAgent {
-    private io: sio.Socket;
-    private runManager: RunManager;
-    private _clientState: ClientState;
+    private _io: sio.Socket;
+    private _runManager: RunManager;
+
     private _activeRun: RunHandle | null = null;
     private _activePlay: PlaybackManager | null = null;
 
     constructor(io: sio.Socket, rm: RunManager) {
-        this.handleClientStateChange = this.handleClientStateChange.bind(this);
-        this.setSchema = this.setSchema.bind(this);
-        this.emitData = this.emitData.bind(this);
-        this.handleRunsUpdate = this.handleRunsUpdate.bind(this);
-        this.io = io;
-        this.runManager = rm;
+        bindClass(this);
 
-        this._clientState = onChange({
-            activeRun: null,
-            schema: null,
-            capabilities: rm.capabilities(),
-            runs: this.runManager.runs(),
-            playState: {playing: false, framerate: 1, position: 0, scale: 1}
-        }, this.handleClientStateChange);
+        log("new connection - clientAgent");
+
+        this._io = io;
+        this._runManager = rm.on("runChange", this.handleRunsUpdate);
 
         io.on("disconnect", () => console.log("DISCON"));
 
-        this.runManager.on("run_change", this.handleRunsUpdate);
-        log("new connection - clientAgent");
-        io.on(CHANNELS.DATA_FRAME_REQUEST, this.wh(this.handleFrameRequest));
-
-        io.on(CHANNELS.PLAY_START, this.wh(this.handlePlayStartRequest));
-        io.on(CHANNELS.PLAY_STOP, this.wh(this.handlePlayStopRequest));
-        io.on(CHANNELS.PLAY_FRAMERATE, this.wh(this.handlePlayFramerateRequest));
-        io.on("play_seek", this.wh(this.handleSeekRequest))
-
-        io.on(CHANNELS.RUN_INIT_REQUEST, this.wh(this.handleRunInitRequest));
-        io.on(CHANNELS.RUN_STOP_REQUEST, this.wh(this.handleRunStopRequest));
-        io.on(CHANNELS.RUN_DELETE_REQUEST, this.wh(this.handleRunDeleteRequest));
-        io.on(CHANNELS.ACTIVATE_RUN, this.wh(this.activateRun));
-
-        io.on("create_module", this.wh(this.createModule));
-
-        io.on("schema_update", this.wh(this.handleSchemaUpdateRequest))
-
-
-        //Handler should be "latest" deactivation handler, b/c it changes when a
-        //run is activated.
-        io.on(CHANNELS.DEACTIVATE_RUN, this.wh(() => this.deactivateRun()));
-
-        this.handleClientStateChange();
+        this.initPlayChannels();
+        this.initRunChannels();
 
         //Disable update dispatching for now - Client can't handle it yet.
-        //setInterval(this.handleRunsUpdate.bind(this), 1000); //Poll runs at 1s
+        setInterval(this.emitRuns, 1000); //Poll runs at 1s
     }
 
-    private handleSeekRequest(time: number) {
-        this._activePlay?.seekTo(time);
+    private initSchemaChannels() {
+        this._io.on("create_module", this.wh(
+            (typeName: string) => this.activeRun().schemaManager().createNewModuleDefinition(typeName)
+        ));
+        this._io.on("schema_update", this.wh(
+            (schema: DAQSchema) => this.activeRun().schemaManager().load(schema)
+        ));
     }
 
-    private handleSchemaUpdateRequest(schema: DAQSchema) {
-        if (!this._activeRun)
-            throw new Error("Can't set schema - no active run!");
-
-        this._activeRun
-            .schemaManager()
-            .load(schema);
+    private initRunChannels() {
+        this._io.on(CHANNELS.RUN_INIT_REQUEST, this.wh(
+            (uuid: string) => this.runManager().beginRunStorage(uuid)
+        ));
+        this._io.on(CHANNELS.RUN_STOP_REQUEST, this.wh(
+            (uuid: string) => this.runManager().stopRunStorage(uuid)
+        ));
+        this._io.on(CHANNELS.RUN_DELETE_REQUEST, this.wh(
+            (uuid: string) => {
+                log(`DELETING ${uuid}`);
+                this.runManager().deleteStoredRun(uuid);
+            }
+        ));
+        this._io.on(CHANNELS.ACTIVATE_RUN, this.wh(this.activateRun));
+        this._io.on(CHANNELS.DEACTIVATE_RUN, this.wh(this.deactivateRun));
     }
 
-    createModule(typeName: string, id: string) {
-        this._activeRun
-            ?.schemaManager()
-            .createNewModuleDefinition(typeName, id);
+    private initPlayChannels() {
+        this._io.on(CHANNELS.PLAY_START, this.wh(
+            () => this.activePlay().play()
+        ));
+        this._io.on(CHANNELS.PLAY_STOP, this.wh(
+            () => this.activePlay().stop()
+        ));
+        this._io.on(CHANNELS.PLAY_FRAMERATE, this.wh(
+            (framerate: number) => this.activePlay().setFramerate(framerate)
+        ));
+        this._io.on("play_seek", this.wh(
+            (time: number) => this.activePlay().seekTo(time)
+        ));
+    }
+
+    private emitSchema(schema?: DAQSchema) {
+        if (!schema)
+            schema = this._activeRun?.schemaManager().schema();
+
+        this._io.emit(CHANNELS.SCHEMA, schema ?? {});
+    }
+
+    private emitRuns() {
+        this._io.emit(CHANNELS.RUNS, this._runManager.runs());
+    }
+
+    private emitPlayState(play?: PlaybackManager) {
+        this._io.emit(CHANNELS.PLAY_STATE, play?.state() ?? this._activePlay?.state() ?? undefined);
+    }
+
+    private emitActiveRun() {
+        this._io.emit("active_run", this._activeRun?.uuid());
+    }
+
+    private emitData(data: any) {
+        this._io.emit("data", data);
+    }
+
+    private emitCompleteState() {
+        this.emitActiveRun();
+        this.emitSchema();
+        this.emitPlayState();
+        this.emitRuns();
     }
 
     /**
@@ -106,133 +117,78 @@ export class ClientAgent {
             } catch (e: any) {
                 console.error(e);
                 this.emitError(e.message);
-                this.handleClientStateChange();
+                this.emitCompleteState();
             }
         }
 
         return handlerWrapper.bind(this);
     }
 
-    handleRunsUpdate() {
-        this.clientState().runs = this.runManager.runs();
-
-        const ar = this.clientState().activeRun;
-        if (ar && !this.runManager.getRunById(ar))
-            this.deactivateRun();
-    }
-
-    handleClientStateChange(path?: string, value?: any, previousValue?: any, name?: any) {
-        console.log("EMIT STATE");
-        this.io.emit(CHANNELS.CLIENT_STATE, this.clientState());
-    }
-
-    handleFrameRequest(uuid: string, timestamp: number) {
-        log("DATA FRAME!!");
-        this.io.emit(CHANNELS.DATA_FRAME, "TEST FRAME :DDD");
-    }
-
-    setSchema(schema: DAQSchema) {
-        log("SET SCHEMA");
-        this._clientState.schema = schema;
-    }
-
     activateRun(uuid: string) {
-        if (this._clientState.activeRun)
-            this.deactivateRun();
+        if (this._activeRun)
+            this.deactivateRun(false);
 
-        //Don't write changes to our state until the end to keep potential errors from having an effect.
-        const newState: Partial<ClientState> = {};
-        const activeRun = this.runManager.resolveRun(uuid);
+        this._activeRun = this._runManager.resolveRun(uuid)
+            .on("destroyed", this.deactivateRun);
 
-        newState.activeRun = uuid;
-
-        newState.schema = activeRun.schemaManager().schema();
-
-        this._activePlay = activeRun.getPlayManager()
+        this._activePlay = this._activeRun.getPlayManager()
+            .on("stateChanged", this.emitPlayState)
             .setFramerate(10)
-            .on("stateChanged", (play) => {
-                this._clientState.playState = play.state();
-            })
-            //.on("stateChanged", (play) => console.log("STATE CHANGE", play.state(), this))
             .callback(this.emitData);
 
-        activeRun?.schemaManager()
-            .on("load", this.setSchema)
-            .on("update", this.setSchema)
+        this._activeRun.schemaManager()
+            .on("load", this.emitSchema)
+            .on("update", this.emitSchema)
 
-
-        // Listeners that handle changes in run state. Detached when run is replaced or destroyed.
-        const destroyListener = this.wh(() => this.deactivateRun());
-
-        //Update the deactivateRun listener to apply to the newly active run.
-        this.deactivateRun = () => {
-            this._activeRun?.off("destroyed", destroyListener);
-            this._activePlay?.destroy().removeAllListeners("stateChanged");
-            activeRun?.schemaManager()
-                .off("load", this.setSchema)
-                .off("update", this.setSchema)
-
-            this.stopPlaying();
-
-            this._clientState.activeRun = null;
-            this._clientState.schema = null;
-            this._activeRun = null;
-        }
-
-        activeRun.on("destroyed", destroyListener);
-
-        assign(this._clientState, newState);
-        this._activeRun = activeRun;
+        this.emitCompleteState();
     }
 
-    deactivateRun() {
-        throw new Error("Can't deactivate - no run active!");
+    deactivateRun(emit: boolean = true) {
+        this.activeRun()
+            .off("destroyed", this.deactivateRun);
+
+        this.activePlay()
+            .off("stateChanged", this.emitPlayState)
+            .destroy()
+
+        this.activeRun().schemaManager()
+            .off("load", this.emitSchema)
+            .off("update", this.emitSchema)
+
+        this._activeRun = null;
+        this._activePlay = null;
+
+        if (emit)
+            this.emitCompleteState();
     }
 
-    clientState() {
-        return this._clientState;
+    handleRunsUpdate() {
+        if (this._activeRun && !this._runManager.getRunByUUID(this._activeRun.uuid()))
+            this.deactivateRun();
+        else
+            this.emitRuns();
     }
 
-    emitData(data: any) {
-        this.io.emit("data", data);
+    private activeRun() {
+        if (!this._activeRun)
+            throw new Error("Error: no active run!");
+
+        return this._activeRun;
     }
 
-    stopPlaying() {
-        this._activePlay?.stop();
+    private activePlay() {
+        if (!this._activePlay)
+            throw new Error("Error: No active play!");
+
+        return this._activePlay;
     }
 
-    handlePlayStartRequest() {
-        if(!this._activePlay) throw new Error("Can't play - no active run!")
-        this._activePlay?.play();
+    runManager() {
+        return this._runManager;
     }
-
-    handlePlayStopRequest() {
-        this._activePlay?.stop();
-    }
-
-    handlePlayFramerateRequest(rate: number) {
-        if(!this._activePlay) throw new Error("Can't set framerate - no active run!")
-        this._activePlay?.setFramerate(rate);
-    }
-
-    handleRunStopRequest(uuid: string) {
-        this.runManager.stopRunStorage(uuid);
-    }
-
-    handleRunInitRequest(reqUUID: string) {
-        log("INIT REQUESTED");
-        this.runManager.beginRunStorage(reqUUID);
-    }
-
-    handleRunDeleteRequest(uuid: string) {
-        log(`DELETING ${uuid}`);
-        this.runManager.deleteStoredRun(uuid);
-    }
-
 
     emitError(errorMessage: string) {
         log(`emitting error: ${errorMessage}`, "error");
-        //log(errorMessage, "error");
-        this.io.emit(CHANNELS.GENERAL_ERROR, errorMessage);
+        this._io.emit(CHANNELS.GENERAL_ERROR, errorMessage);
     }
 }

@@ -115,7 +115,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     }
 
     //Adds a bare-minimum definition to the schema.
-    createNewModuleDefinition(typeName: string, id: string) {
+    createNewModuleDefinition(typeName: string) {
         this.addModule(this.findDriver(typeName).newDefinition());
     }
 

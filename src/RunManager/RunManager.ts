@@ -10,7 +10,7 @@ import {TypedEmitter} from "tiny-typed-emitter";
 export type Newable<T> = { new(...args: any[]): T; };
 
 interface RunManagerEvents {
-    run_change: (runs: RunHandle[]) => void
+    runChange: (runs: RunHandle[]) => void
 }
 
 /**
@@ -31,7 +31,7 @@ export class RunManager extends TypedEmitter<RunManagerEvents> {
     }
 
     private emitRunsChange() {
-        this.emit("run_change", this.runs());
+        this.emit("runChange", this.runs());
     }
 
     /**
@@ -68,7 +68,7 @@ export class RunManager extends TypedEmitter<RunManagerEvents> {
      * @param uuid - The UUID of the run to attempt to find
      * @param runType - The class to filter findable runs by (Realtime or Stored)
      */
-    public getRunById<T extends RunHandle>(uuid: string, runType?: Newable<T>): T | undefined {
+    public getRunByUUID<T extends RunHandle>(uuid: string, runType?: Newable<T>): T | undefined {
         const run = this.runs().find(run => run.uuid() === uuid && (!runType || run instanceof runType));
         return run as T;
     }
@@ -82,7 +82,7 @@ export class RunManager extends TypedEmitter<RunManagerEvents> {
         let r: string | T | undefined = run;
 
         if (typeof run === "string")
-            r = this.getRunById<T>(run, runType);
+            r = this.getRunByUUID<T>(run, runType);
 
         if (!r)
             throw new Error(`No run could be found with ID >${run}<`);
@@ -96,7 +96,6 @@ export class RunManager extends TypedEmitter<RunManagerEvents> {
      */
     public beginRunStorage(run: string | RealtimeRun) {
         const fm = this.checkFM();
-        //TODO: Use the play interface!
         const realtimeRun = this.resolveRun(run, RealtimeRun);
         fm.createStoredRun(uuidv4())
             .link(realtimeRun)
