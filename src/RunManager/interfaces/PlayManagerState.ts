@@ -1,5 +1,5 @@
 export interface PlaybackManagerState {
-    position: number;
+    time: number;
     playing: boolean;
     scale: number;
     framerate: number;

@@ -16,7 +16,7 @@ export class RealtimeRun extends RunHandle {
         this.emit("data", data, timestamp);
     }
 
-    getPlayManager(): PlaybackManager {
+    getPlayManager(): RealtimePlaybackManager {
         return new RealtimePlaybackManager(this);
     }
 }

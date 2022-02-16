@@ -2,21 +2,23 @@ import {TypedEmitter} from "tiny-typed-emitter";
 import onChange from "on-change";
 import {PlaybackManagerEvents} from "./interfaces/PlayManagerEvents";
 import {PlaybackManagerState} from "./interfaces/PlayManagerState";
+import * as Process from "process";
+import {performance} from "perf_hooks";
 
 export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents> {
-    private _state: PlaybackManagerState;
-    protected _frameIsDebounced: boolean = false;
-    protected _callback: (frame: any, time: number) => void;
+    private _frameIsDebounced: boolean = false;
+    protected _state: PlaybackManagerState;
+    protected _callback: (frame: any) => void;
 
     protected constructor(playType: "realtime" | "stored") {
         super();
         this._callback = () => {
         };
         this._state = onChange({
-            position: 0,
+            time: 0,
             playing: false,
             scale: 1,
-            framerate: 1,
+            framerate: 10,
             playType
         }, this.onStateChange.bind(this));
     }
@@ -25,46 +27,55 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
         this.emit("stateChanged", this);
     }
 
-    play(): PlaybackManager {
+    play(): this {
         this._state.playing = true;
         return this;
     }
 
-    callback(cb: (frame: any, time: number) => void): PlaybackManager {
+    callback(cb: (frame: any) => void): this {
         this._callback = cb;
         return this;
     }
 
-    stop(): PlaybackManager {
+    stop(): this {
         this._frameIsDebounced = false;
         this._state.playing = false;
         return this;
     };
 
-    seekTo(position: number): PlaybackManager {
+    seekTo(time: number): this {
         this.stop();
-        this._state.position = position;
+        this._state.time = time;
         return this;
     };
 
-    setFramerate(rate?: number): PlaybackManager {
+    setFramerate(rate?: number): this {
         if (rate != null) this._state.framerate = rate;
         this._frameIsDebounced = false;
         return this;
     };
 
-    setScale(scale?: number): PlaybackManager {
+    setScale(scale?: number): this {
         if (scale != null) this._state.scale = scale;
         return this;
     };
 
-    abstract destroy(): PlaybackManager;
+    abstract destroy(): this;
 
-    state(): PlaybackManagerState {
+    public state(): PlaybackManagerState {
         return this._state;
     }
 
-    protected meterData(data: any, time: number) {
+    public time() {
+        return this._state.time;
+    }
+
+    /**
+     * Should be fed frames at a constant interval. Limits frame emission to a
+     * set framerate so that readers aren't overwhelmed. Doesn't control
+     * speed of playback.
+     */
+    protected meterData(data: any) {
         if (!this.state().playing)
             return;
 
@@ -72,13 +83,13 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
             return;
 
         if (this._state.framerate > 0) {
+            this._frameIsDebounced = true;
             let l = setTimeout(() => {
                 this._frameIsDebounced = false
             }, 1000 / this._state.framerate);
-            this._frameIsDebounced = true;
         }
 
-        this._callback(data, time);
+        this._callback(data);
     }
 
 }

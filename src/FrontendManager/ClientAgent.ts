@@ -29,8 +29,11 @@ export class ClientAgent {
 
         this.initPlayChannels();
         this.initRunChannels();
+        this.initSchemaChannels();
 
-        //Disable update dispatching for now - Client can't handle it yet.
+        this.emitCompleteState();
+
+        //Emit runs at interval to update size on client.
         setInterval(this.emitRuns, 1000); //Poll runs at 1s
     }
 
@@ -76,10 +79,8 @@ export class ClientAgent {
     }
 
     private emitSchema(schema?: DAQSchema) {
-        if (!schema)
-            schema = this._activeRun?.schemaManager().schema();
-
-        this._io.emit(CHANNELS.SCHEMA, schema ?? {});
+        if (!schema) schema = this._activeRun?.schemaManager().schema();
+        this._io.emit(CHANNELS.SCHEMA, schema);
     }
 
     private emitRuns() {
@@ -91,7 +92,7 @@ export class ClientAgent {
     }
 
     private emitActiveRun() {
-        this._io.emit("active_run", this._activeRun?.uuid());
+        this._io.emit("active_run", this._activeRun?.uuid() ?? null);
     }
 
     private emitData(data: any) {

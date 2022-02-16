@@ -1,11 +1,12 @@
 import {RunManager} from "../RunManager/RunManager";
-import * as WebSocket from "ws"
 import {ClientAgent} from "./ClientAgent";
-import {Express} from "express";
 import * as http from "http";
 import * as sio from "socket.io"
 import {CHANNELS} from "./SIOChannels";
 
+/**
+ * Sets up and manages the socket.io server.
+ */
 export class ClientManager {
     private io: sio.Server;
     private agents: WeakSet<ClientAgent> = new WeakSet();

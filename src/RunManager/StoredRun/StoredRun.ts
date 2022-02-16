@@ -32,7 +32,7 @@ export class StoredRun extends RunHandle {
         this.schemaManager().setAllowBreaking(false);
     }
 
-    getPlayManager(): PlaybackManager {
+    getPlayManager(): StoredPlaybackManager {
         return new StoredPlaybackManager(this);
     }
 
@@ -77,7 +77,7 @@ export class StoredRun extends RunHandle {
      */
     public writeFrame(data: any) {
         const buf = this.schemaManager().storedCType().allocLE(data);
-        console.log(buf);
+        //console.log(buf);
         this.writeRaw(new Uint8Array(buf));
     }
 

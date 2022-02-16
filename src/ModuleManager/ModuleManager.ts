@@ -95,9 +95,9 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
      * Ingests parsed, JSON data from modules.
      */
     private gatherData(data: any, time: number, instance: ModuleInstance, binding: InstanceBinding) {
-        console.log(data, this._data);
+        //console.log(data, this._data);
+        //log(data);
         this._data[instance.uuid()] = data;
-        log(data);
     }
 
     // TODO: REPLACE THIS GARBAGE! TIMING WILL N O T BE ACCURATE WITH THIS APPROACH.
