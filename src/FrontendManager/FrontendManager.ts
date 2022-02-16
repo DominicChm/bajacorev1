@@ -3,6 +3,8 @@ import {RunManager} from "../RunManager/RunManager";
 import {Server, createServer} from "http";
 import {ClientManager} from "./ClientManager";
 import {logger} from "../Util/logging";
+import {StoredRun} from "../RunManager/StoredRun/StoredRun";
+import {CSVEncoder} from "./CSVEncoder";
 
 const log = logger("FrontendManager");
 
@@ -22,21 +24,28 @@ export class FrontendManager {
         this._clientManager = new ClientManager(rm, this._server);
         this._runManager = rm;
 
+        this.setupRoutes();
+
         //TODO: Make frontend port a config var!
         this._server.listen(3000, () => log(`Listening on ${3000}`));
     }
 
     private setupRoutes() {
         this._app.use(Express.static('public'));
-        this._app.get('/', (req, res) => {
-            res.send('hello world')
-        })
+        this._app.get('/csv/:uuid', this.dlCSV.bind(this));
     }
 
     /**
      * Generates and Serves a CSV for the run passed as a query parameter.
      */
     private dlCSV(req: Request, res: Response) {
-        
+        const run = this._runManager.resolveRun(req.params.uuid, StoredRun);
+        run.getPlayManager()
+            .seekTo(0)
+            .noMeter()
+            .allFrames()
+            .getPlayStream()
+            .pipe(new CSVEncoder(run.schemaManager().frameInterval()))
+            .pipe(res);
     }
 }

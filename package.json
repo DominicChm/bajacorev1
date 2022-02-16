@@ -32,6 +32,7 @@
   "dependencies": {
     "@types/lodash": "^4.14.178",
     "@types/nanotimer": "^0.3.0",
+    "@types/papaparse": "^5.3.2",
     "c-type-util": "^3.0.0",
     "chalk": "^4.1.2",
     "express": "^4.17.1",
@@ -42,6 +43,7 @@
     "mqtt": "^4.3.4",
     "nanotimer": "^0.3.15",
     "on-change": "^2.2.3",
+    "papaparse": "^5.3.1",
     "socket.io": "^4.4.0",
     "tiny-typed-emitter": "^2.1.0",
     "uuid": "^8.3.2",

@@ -92,4 +92,11 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
         this._callback(data);
     }
 
+    public allFrames(): this {
+        return this.setFramerate(0);
+    }
+
+    public noMeter(): this {
+        return this.setScale(0);
+    }
 }

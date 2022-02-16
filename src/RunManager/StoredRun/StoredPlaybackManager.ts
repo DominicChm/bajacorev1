@@ -5,10 +5,11 @@ import fs from "fs-extra";
 import {CTypeStream} from "../CTypeStream";
 import {StreamMeter} from "../StreamMeter";
 import {EventStreamConsumer} from "../EventStreamConsumer";
+import {Stream, Writable} from "stream";
 
 export class StoredPlaybackManager extends PlaybackManager {
     private _run: StoredRun;
-    private _streamMeter: StreamMeter | undefined;
+    private _stream: Writable | undefined;
 
     constructor(run: StoredRun) {
         super("stored");
@@ -55,17 +56,22 @@ export class StoredPlaybackManager extends PlaybackManager {
         return this;
     }
 
-    play(): this {
-        this._streamMeter = fs.createReadStream(this._run.dataPath(), {start: this.position()})
+    getPlayStream() {
+        if (this._stream)
+            this.stop();
+        return this._stream = fs.createReadStream(this._run.dataPath(), {start: this.position()})
             .pipe(new CTypeStream(this._run.schemaManager().storedCType()))
-            .pipe(new StreamMeter(this._run.schemaManager().frameInterval()))
+            .pipe(new StreamMeter((this._run.schemaManager().frameInterval() ?? 1) * this._state.scale))
+    }
 
-        this._streamMeter.pipe(new EventStreamConsumer())
+    play(): this {
+        this.getPlayStream()
+            .pipe(new EventStreamConsumer())
             .on("data", this.meterData);
-
 
         return super.play();
     }
+
 
     position(): number {
         let frameInterval = this._run.schemaManager().frameInterval();
@@ -74,7 +80,7 @@ export class StoredPlaybackManager extends PlaybackManager {
     }
 
     stop(): this {
-        this._streamMeter?.destroy();
+        this._stream?.destroy();
         return super.stop();
     }
 }

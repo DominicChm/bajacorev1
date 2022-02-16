@@ -7,7 +7,7 @@ export class StreamMeter extends Transform {
         super({objectMode: true});
 
         this.setInterval = this.setInterval.bind(this);
-        if (interval) this.interval = interval;
+        if (interval != null) this.interval = interval;
     }
 
     _transform(chunk: any, encoding: BufferEncoding, callback: TransformCallback) {

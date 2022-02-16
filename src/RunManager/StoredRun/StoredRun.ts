@@ -162,6 +162,5 @@ export class StoredRun extends RunHandle {
     destroy() {
         this.unlink();
         super.destroy();
-
     }
 }
