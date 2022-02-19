@@ -43,6 +43,6 @@ export abstract class RunHandle extends TypedEmitter<RunEvents> {
         return this._destroyed;
     }
 
-    abstract getPlayManager(): PlaybackManager;
+    abstract getPlayManager(convertData: boolean): PlaybackManager;
 
 }

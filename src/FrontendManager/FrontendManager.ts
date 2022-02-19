@@ -4,7 +4,8 @@ import {Server, createServer} from "http";
 import {ClientManager} from "./ClientManager";
 import {logger} from "../Util/logging";
 import {StoredRun} from "../RunManager/StoredRun/StoredRun";
-import {CSVEncoder} from "./CSVEncoder";
+import {DataRenamerStream} from "./DataRenamerStream";
+import {CSVEncoderStream} from "./CSVEncoderStream";
 
 const log = logger("FrontendManager");
 
@@ -40,12 +41,13 @@ export class FrontendManager {
      */
     private dlCSV(req: Request, res: Response) {
         const run = this._runManager.resolveRun(req.params.uuid, StoredRun);
-        run.getPlayManager()
+        run.getPlayManager(true)
             .seekTo(0)
             .noMeter()
             .allFrames()
             .getPlayStream()
-            .pipe(new CSVEncoder(run.schemaManager().frameInterval()))
+            .pipe(new DataRenamerStream(run.schemaManager()))
+            .pipe(new CSVEncoderStream(run.schemaManager().frameInterval()))
             .pipe(res);
     }
 }

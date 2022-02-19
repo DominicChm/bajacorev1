@@ -6,8 +6,8 @@ import {bindAll} from "lodash";
 export class RealtimePlaybackManager extends PlaybackManager {
     private _run: RealtimeRun;
 
-    constructor(run: RealtimeRun) {
-        super("realtime");
+    constructor(run: RealtimeRun, convertData: boolean) {
+        super("realtime", convertData);
         bindClass(this);
 
         this._run = run;

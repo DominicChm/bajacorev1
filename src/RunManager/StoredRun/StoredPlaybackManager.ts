@@ -6,15 +6,16 @@ import {CTypeStream} from "../CTypeStream";
 import {StreamMeter} from "../StreamMeter";
 import {EventStreamConsumer} from "../EventStreamConsumer";
 import {Stream, Writable} from "stream";
+import {DataConverterStream} from "../DataConverterStream";
+import {bindClass} from "../../Util/util";
 
 export class StoredPlaybackManager extends PlaybackManager {
     private _run: StoredRun;
     private _stream: Writable | undefined;
 
-    constructor(run: StoredRun) {
-        super("stored");
-        this.meterData = this.meterData.bind(this);
-        this.destroy = this.destroy.bind(this);
+    constructor(run: StoredRun, convertData: boolean) {
+        super("stored", convertData);
+        bindClass(this);
 
         this._run = run;
         this._run.on("destroyed", this.destroy);
@@ -59,9 +60,15 @@ export class StoredPlaybackManager extends PlaybackManager {
     getPlayStream() {
         if (this._stream)
             this.stop();
-        return this._stream = fs.createReadStream(this._run.dataPath(), {start: this.position()})
+
+        this._stream = fs.createReadStream(this._run.dataPath(), {start: this.position()})
             .pipe(new CTypeStream(this._run.schemaManager().storedCType()))
             .pipe(new StreamMeter((this._run.schemaManager().frameInterval() ?? 1) * this._state.scale))
+
+        if (this.convertingEnabled())
+            return this._stream.pipe(new DataConverterStream(this._run.schemaManager()));
+        else
+            return this._stream;
     }
 
     play(): this {

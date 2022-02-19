@@ -32,8 +32,8 @@ export class StoredRun extends RunHandle {
         this.schemaManager().setAllowBreaking(false);
     }
 
-    getPlayManager(): StoredPlaybackManager {
-        return new StoredPlaybackManager(this);
+    getPlayManager(convertData: boolean): StoredPlaybackManager {
+        return new StoredPlaybackManager(this, convertData);
     }
 
     public lockForWriting(): this {
@@ -107,7 +107,7 @@ export class StoredRun extends RunHandle {
             .setAllowBreaking(false);
 
         const pm = run
-            .getPlayManager()
+            .getPlayManager(false)
             .callback(this.writeFrame)
             .setFramerate(0)
             .play();

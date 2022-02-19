@@ -9,7 +9,7 @@ const flattenObject = (obj: any, prefix = '') =>
         return acc;
     }, {});
 
-export class CSVEncoder extends Transform {
+export class CSVEncoderStream extends Transform {
     private _frameInterval: number | undefined;
     private _time: number = 0;
     private _headerWritten: boolean = false;
@@ -26,8 +26,8 @@ export class CSVEncoder extends Transform {
         }
         const flat = flattenObject(chunk)
         const dat = Papa.unparse([flat], {header: !this._headerWritten}) + "\n";
-        //console.log(flat);
         this._headerWritten = true;
+
         callback(null, dat);
     }
 

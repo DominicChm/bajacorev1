@@ -132,7 +132,7 @@ export class ClientAgent {
         this._activeRun = this._runManager.resolveRun(uuid)
             .on("destroyed", this.deactivateRun);
 
-        this._activePlay = this._activeRun.getPlayManager()
+        this._activePlay = this._activeRun.getPlayManager(true)
             .on("stateChanged", this.emitPlayState)
             .setFramerate(10)
             .callback(this.emitData);

@@ -3,6 +3,7 @@ import {TypedEmitter} from "tiny-typed-emitter";
 import {ConfigT} from "../moduleTypes/SensorBrakePressure";
 import {ModuleTypeDriver} from "./ModuleTypeDriver";
 import {ModuleInstanceEvents} from "./interfaces/ModuleInstanceEvents";
+import {bindClass} from "../Util/util";
 
 /**
  * Manages individual module functions by merging a type definition with an instance definition.
@@ -17,13 +18,11 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
 
     constructor(moduleType: ModuleTypeDriver, moduleDefinition: ModuleDefinition<ConfigT>) {
         super();
-        this._moduleType = moduleType;
+        bindClass(this);
 
         // Definition is initialized a little later
         this._definition = {} as any;
-
-        this.setDefinition = this.setDefinition.bind(this);
-        this.feedRaw = this.feedRaw.bind(this);
+        this._moduleType = moduleType;
 
         this.setDefinition(moduleDefinition);
     }
@@ -71,6 +70,10 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
         return this._definition.uuid;
     }
 
+    public name() {
+        return this._definition.name;
+    }
+
     public data() {
         return this._data;
     }
@@ -98,4 +101,7 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
         return this._moduleType;
     }
 
+    stored2human(data: any) {
+        return this._moduleType.stored2Human(data, this.config());
+    }
 }

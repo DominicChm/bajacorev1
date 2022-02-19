@@ -6,11 +6,12 @@ import * as Process from "process";
 import {performance} from "perf_hooks";
 
 export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents> {
+    private readonly _convertingEnabled: boolean;
     private _frameIsDebounced: boolean = false;
     protected _state: PlaybackManagerState;
     protected _callback: (frame: any) => void;
 
-    protected constructor(playType: "realtime" | "stored") {
+    protected constructor(playType: "realtime" | "stored", convertingEnabled: boolean) {
         super();
         this._callback = () => {
         };
@@ -21,6 +22,12 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
             framerate: 10,
             playType
         }, this.onStateChange.bind(this));
+
+        this._convertingEnabled = convertingEnabled;
+    }
+
+    convertingEnabled(): boolean {
+        return this._convertingEnabled;
     }
 
     onStateChange() {
