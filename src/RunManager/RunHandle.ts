@@ -30,6 +30,7 @@ export abstract class RunHandle extends TypedEmitter<RunEvents> {
         return {
             uuid: this._uuid,
             type: this._runType,
+            name: this._schemaManager.schema().name
         }
     }
 

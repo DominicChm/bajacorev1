@@ -30,6 +30,7 @@ export class ClientAgent {
         this.initPlayChannels();
         this.initRunChannels();
         this.initSchemaChannels();
+        io.emit(CHANNELS.CAPABILITIES, this._runManager.capabilities()); //TODO: Misc initializer?
 
         this.emitCompleteState();
 

@@ -25,8 +25,8 @@ export class ClientManager {
             this.agents.add(new ClientAgent(socket, this.runManager));
         });
 
-        this.runManager.on("runChange", () => {
-            this.io.emit(CHANNELS.RUNS_LIST, this.runManager.runs())
-        });
+        // this.runManager.on("runChange", () => {
+        //     this.io.emit(CHANNELS.RUNS_LIST, this.runManager.runs())
+        // });
     }
 }
