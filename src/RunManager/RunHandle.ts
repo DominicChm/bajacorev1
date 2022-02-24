@@ -28,7 +28,7 @@ export abstract class RunHandle extends TypedEmitter<RunEvents> {
 
     public toJSON() {
         return {
-            uuid: this._uuid,
+            id: this._uuid,
             type: this._runType,
             name: this._schemaManager.schema().name
         }

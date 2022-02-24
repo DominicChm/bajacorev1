@@ -5,7 +5,6 @@ export const CHANNELS = {
     PLAY_STOP: "play_stop",
     PLAY_FRAMERATE: "play_framerate",
 
-    RUN_HEADER_REQUEST: "run_head_req",
     // RUNS_LIST: "runs_list",
     RUN_STOP_REQUEST: "run_stop",
     RUN_INIT_REQUEST: "run_init",
