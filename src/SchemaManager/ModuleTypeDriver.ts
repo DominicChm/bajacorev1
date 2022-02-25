@@ -17,13 +17,13 @@ export class ModuleTypeDriver {
         this._typeDefinition = typeDef;
         this._combinedConfigSchema = this._typeDefinition.replicatedConfigSchema.concat(this._typeDefinition.persistentConfigSchema);
         this._definitionSchema = Joi.object({
-            uuid: Joi.string(),
+            id: Joi.string(),
             name: Joi.string()
                 .default(`New ${typeDef.typeName}`),
             description: Joi.string()
                 .allow("")
                 .default(""),
-            id: Joi.string()
+            mac: Joi.string()
                 .custom(joiMac)
                 .default("00:00:00:00:00:00"), //MAC Id.
             version: Joi.number()
@@ -53,9 +53,9 @@ export class ModuleTypeDriver {
     /**
      * Returns a default module definition for this type.
      */
-    newDefinition(uuid = v4()) {
+    newDefinition(id = v4()) {
         try {
-            const def = Joi.attempt({uuid}, this._definitionSchema, {noDefaults: false});
+            const def = Joi.attempt({id}, this._definitionSchema, {noDefaults: false});
             return this.validateDefinition(def);
         } catch (e: any) {
             throw new Error(`Error creating a default definition! MAKE SURE ALL CONFIG SCHEMA FIELDS IN >${this._typeDefinition.typeName}< HAVE A DEFAULT!!! - ${e.message}`);
@@ -70,7 +70,7 @@ export class ModuleTypeDriver {
             ...this.newDefinition(),
             name: definition.name,
             description: definition.description,
-            id: definition.id,
+            mac: definition.mac,
         }
     }
 

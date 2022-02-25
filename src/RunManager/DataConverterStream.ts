@@ -9,7 +9,7 @@ export class DataConverterStream extends Transform {
 
         this._converters = new Map()
         for (const instance of manager.instanceManager().instances()) {
-            this._converters.set(instance.uuid(), instance.stored2human)
+            this._converters.set(instance.id(), instance.stored2human)
         }
     }
 

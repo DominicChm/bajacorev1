@@ -67,7 +67,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
      */
     load(schema: DAQSchema, fullReload: boolean = false): this {
         //Check schema for dupe IDs. Will throw if found.
-        checkDuplicates(schema.modules, (m) => m.uuid);
+        checkDuplicates(schema.modules, (m) => m.id);
         const loadedFlag = !this._schema;
 
         const {
@@ -137,7 +137,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
      * @param def - the ModuleDefinition to add.
      */
     addModule(def: ModuleDefinition<any>): this {
-        log(`Adding: ${def.id}`);
+        log(`Adding: ${def.mac}`);
 
         def = this.findDriver(def.type).validateDefinition(def);
 
@@ -164,7 +164,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     }
 
     storedCType(): CType<any> {
-        const members = Object.fromEntries(this._instanceManager.instances().map(i => [i.uuid(), i.typeDriver().storageCType()]))
+        const members = Object.fromEntries(this._instanceManager.instances().map(i => [i.id(), i.typeDriver().storageCType()]))
 
         return cStruct(members);
     }

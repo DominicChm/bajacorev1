@@ -97,7 +97,7 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     private gatherData(data: any, time: number, instance: ModuleInstance, binding: InstanceBinding) {
         //console.log(data, this._data);
         //log(data);
-        this._data[instance.uuid()] = data;
+        this._data[instance.id()] = data;
     }
 
     // TODO: REPLACE THIS GARBAGE! TIMING WILL N O T BE ACCURATE WITH THIS APPROACH.
@@ -107,8 +107,8 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     }
 
     unbindInstance(instance: ModuleInstance) {
-        this._bindings.find(b => b.uuid() === instance.uuid())?.unbind();
-        this._bindings.filter(b => b.uuid() !== instance.uuid());
+        this._bindings.find(b => b.uuid() === instance.id())?.unbind();
+        this._bindings.filter(b => b.uuid() !== instance.id());
     }
 
     getRuns(): RealtimeRun[] {

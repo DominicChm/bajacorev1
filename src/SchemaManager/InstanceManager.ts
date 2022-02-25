@@ -31,7 +31,7 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
     }
 
     private definitionToMap(def: ModuleDefinition<any>[]) {
-        return new Map(def.map(d => [d.uuid, d]));
+        return new Map(def.map(d => [d.id, d]));
     }
 
     /**
@@ -40,7 +40,7 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
      * @param throwOnBreak
      */
     loadModuleDefinitions(defs: ModuleDefinition<any>[], throwOnBreak: boolean = false) {
-        checkDuplicates(defs, (m) => m.uuid);
+        checkDuplicates(defs, (m) => m.id);
 
         const mappedDefs = this.preprocessDefinition(this.definitionToMap(defs), throwOnBreak);
         let instances = new Map(this._instances);
@@ -121,9 +121,9 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
                 mappedDefs.delete(uuid);
 
                 const derivedDef = driver.deriveDefinition(definition);
-                mappedDefs.set(derivedDef.uuid, derivedDef);
+                mappedDefs.set(derivedDef.id, derivedDef);
 
-                log(`TYPECHANGED >${instance.uuid()}<`)
+                log(`TYPECHANGED >${instance.id()}<`)
             }
         }
 

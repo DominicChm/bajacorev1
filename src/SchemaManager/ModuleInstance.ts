@@ -62,12 +62,12 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
         return this._definition.config;
     }
 
-    public id() {
-        return this._definition.id;
+    public mac() {
+        return this._definition.mac;
     }
 
-    public uuid() {
-        return this._definition.uuid;
+    public id() {
+        return this._definition.id;
     }
 
     public name() {

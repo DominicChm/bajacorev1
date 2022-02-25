@@ -11,7 +11,7 @@ export class DataRenamerStream extends Transform {
         super({objectMode: true});
         this._map = new Map<string, string>();
         for (const i of schemaManager.instanceManager().instances()) {
-            this._map.set(i.uuid(), i.name());
+            this._map.set(i.id(), i.name());
         }
     }
 

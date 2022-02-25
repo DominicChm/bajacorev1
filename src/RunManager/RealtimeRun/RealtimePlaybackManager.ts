@@ -18,7 +18,7 @@ export class RealtimePlaybackManager extends PlaybackManager {
     destroy(): this {
         this.stop();
         this._run.off("data", this.meterData);
-        this._run.off("destroyed", this.destroy.bind(this));
+        this._run.off("destroyed", this.destroy);
         return this;
     }
 

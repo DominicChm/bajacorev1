@@ -24,7 +24,7 @@ export class InstanceBinding {
         this._dataListener = dataListener;
 
         this._mqttListener = instance.feedRaw;
-        this._channel = `car/${instance.id()}/raw`;
+        this._channel = `car/${instance.mac()}/raw`;
 
         router.on(this._channel, this._mqttListener);
         instance.on("data", this.dataListenerWrapper);
@@ -32,7 +32,7 @@ export class InstanceBinding {
     }
 
     public uuid() {
-        return this._instance.uuid();
+        return this._instance.id();
     }
 
     private dataListenerWrapper(data: any, timestamp: number) {

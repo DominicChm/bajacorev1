@@ -1,8 +1,8 @@
 export interface ModuleDefinition<ConfigT> {
-    uuid: string,
+    id: string,
     name: string,
     description: string,
-    id: string //MAC Id.
+    mac: string //MAC Id.
     version: number, //Unused for now
     type: string
     config: ConfigT,

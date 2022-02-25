@@ -1202,7 +1202,7 @@ setDocument = Sizzle.setDocument = function( node ) {
 	// The broken getElementById methods don't pick up programmatically-set names,
 	// so use a roundabout getElementsByName test
 	support.getById = assert( function( el ) {
-		docElem.appendChild( el ).id = expando;
+		docElem.appendChild( el ).mac = expando;
 		return !document.getElementsByName || !document.getElementsByName( expando ).length;
 	} );
 

@@ -6,6 +6,7 @@ import {logger} from "../Util/logging";
 import {PlaybackManager} from "../RunManager/PlaybackManager";
 import {RunHandle} from "../RunManager/RunHandle";
 import {bindClass} from "../Util/util";
+import {moduleTypeDefinitions} from "../moduleTypes";
 
 const log = logger("ClientAgent");
 
@@ -30,7 +31,6 @@ export class ClientAgent {
         this.initPlayChannels();
         this.initRunChannels();
         this.initSchemaChannels();
-        io.emit(CHANNELS.CAPABILITIES, this._runManager.capabilities()); //TODO: Misc initializer?
 
         this.emitCompleteState();
 
@@ -98,6 +98,11 @@ export class ClientAgent {
 
     private emitData(data: any) {
         this._io.emit("data", data);
+    }
+
+    private emitStatic() {
+        this._io.emit(CHANNELS.CAPABILITIES, this._runManager.capabilities());
+        this._io.emit("module_types", moduleTypeDefinitions.map(v => v.typeName));
     }
 
     private emitCompleteState() {
