@@ -10,6 +10,7 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
     private _frameIsDebounced: boolean = false;
     protected _state: PlaybackManagerState;
     protected _callback: (frame: any) => void;
+    private _numFrames: number = 0; // Number of frames to play. 0 = disabled.
 
     protected constructor(playType: "realtime" | "stored", convertingEnabled: boolean) {
         super();
@@ -18,6 +19,7 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
         this._state = onChange({
             time: 0,
             playing: false,
+            paused: false,
             scale: 1,
             framerate: 10,
             playType
@@ -34,8 +36,14 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
         this.emit("stateChanged", this);
     }
 
+    pause(): this {
+        this._state.paused = true;
+        return this;
+    }
+
     play(): this {
         this._state.playing = true;
+        this._state.paused = false;
         return this;
     }
 
@@ -47,6 +55,7 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
     stop(): this {
         this._frameIsDebounced = false;
         this._state.playing = false;
+        this._state.paused = false;
         return this;
     };
 
@@ -66,6 +75,10 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
         if (scale != null) this._state.scale = scale;
         return this;
     };
+
+    setFrameLimit(frames: number) {
+        this._numFrames = frames;
+    }
 
     abstract destroy(): this;
 
@@ -97,6 +110,13 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
         }
 
         this._callback(data);
+
+        // Pause playback if we ran out of frames to play.
+        // Pause if 1, bc the subsequent decrement will make this 0 and therefore disable the frame count.
+        if (this._numFrames === 1) this.pause();
+
+        // Decrement number of frames left, if more than 0.
+        if (this._numFrames > 0) this._numFrames--;
     }
 
     public allFrames(): this {

@@ -45,7 +45,7 @@ export class FrontendManager {
             .seekTo(0)
             .noMeter()
             .allFrames()
-            .getPlayStream()
+            .createPlayStream()
             .pipe(new DataRenamerStream(run.schemaManager()))
             .pipe(new CSVEncoderStream(run.schemaManager().frameInterval()))
             .pipe(res);

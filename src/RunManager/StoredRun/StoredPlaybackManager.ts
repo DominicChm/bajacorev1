@@ -11,7 +11,8 @@ import {bindClass} from "../../Util/util";
 
 export class StoredPlaybackManager extends PlaybackManager {
     private _run: StoredRun;
-    private _stream: Writable | undefined;
+    private _stream: Writable | null = null;
+
 
     constructor(run: StoredRun, convertData: boolean) {
         super("stored", convertData);
@@ -42,7 +43,6 @@ export class StoredPlaybackManager extends PlaybackManager {
         if (time == null || frameInterval == null) return this;
         super.seekTo(time);
 
-
         // Read the current frame and callback it to update the client.
         fs.open(this._run.dataPath(), 'r', (status, fd) => {
             if (status) throw new Error(status.message);
@@ -57,7 +57,7 @@ export class StoredPlaybackManager extends PlaybackManager {
         return this;
     }
 
-    getPlayStream() {
+    createPlayStream() {
         if (this._stream)
             this.stop();
 
@@ -71,8 +71,18 @@ export class StoredPlaybackManager extends PlaybackManager {
             return this._stream;
     }
 
+    pause() {
+        if (!this._stream) throw new Error("Can't play - Playback is stopped!");
+        this._stream.cork();
+
+        return super.pause();
+    }
+
     play(): this {
-        this.getPlayStream()
+        if (this._stream)  //Handle an un-pause.
+            this._stream.uncork();
+
+        else this.createPlayStream()
             .pipe(new EventStreamConsumer())
             .on("data", this.meterData);
 
@@ -88,6 +98,7 @@ export class StoredPlaybackManager extends PlaybackManager {
 
     stop(): this {
         this._stream?.destroy();
+        this._stream = null;
         return super.stop();
     }
 }
