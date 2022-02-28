@@ -43,9 +43,12 @@ export class RealtimePlaybackManager extends PlaybackManager {
         return super.stop();
     }
 
+    pause(): this {
+        return this.stop();
+    }
 
     protected meterData(data: any) {
-        this._state.time += this._run.schemaManager().frameInterval() ?? 0;
+        if (this._state.playing) this._state.time += this._run.schemaManager().frameInterval() ?? 0;
         super.meterData(data);
     }
 }

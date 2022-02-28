@@ -11,6 +11,10 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
     protected _state: PlaybackManagerState;
     protected _callback: (frame: any) => void;
     private _numFrames: number = 0; // Number of frames to play. 0 = disabled.
+    protected _firstFrameSent = false;
+
+    private _seekDebounced = false;
+    private _seekTimeout: any = undefined;
 
     protected constructor(playType: "realtime" | "stored", convertingEnabled: boolean) {
         super();
@@ -24,7 +28,7 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
             framerate: 10,
             playType
         }, this.onStateChange.bind(this));
-
+        this.meterData = this.meterData.bind(this);
         this._convertingEnabled = convertingEnabled;
     }
 
@@ -38,12 +42,15 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
 
     pause(): this {
         this._state.paused = true;
+        this._state.playing = false;
         return this;
     }
 
     play(): this {
         this._state.playing = true;
         this._state.paused = false;
+        this._frameIsDebounced = false;
+        this._firstFrameSent = false;
         return this;
     }
 
@@ -60,8 +67,29 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
     };
 
     seekTo(time: number): this {
-        this.stop();
+        if (time == null) return this;
         this._state.time = time;
+
+        if (this._seekDebounced) {
+
+            if (!this._seekTimeout) this._seekTimeout = setTimeout(() => {
+                this._seekDebounced = false;
+                try {
+                    this.seekTo(this._state.time)
+                } catch (e: any) {
+                    console.warn(e.message);
+                }
+            }, 100);
+
+        } else {
+            this._seekDebounced = true;
+            this._seekTimeout = null;
+
+            this.stop();
+
+            this.setFrameLimit(1);
+            this.play()
+        }
         return this;
     };
 
@@ -109,6 +137,7 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
             }, 1000 / this._state.framerate);
         }
 
+        this._firstFrameSent = true;
         this._callback(data);
 
         // Pause playback if we ran out of frames to play.
@@ -117,6 +146,10 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
 
         // Decrement number of frames left, if more than 0.
         if (this._numFrames > 0) this._numFrames--;
+    }
+
+    protected shouldIncrementTime(): boolean {
+        return this._state.playing && this._firstFrameSent;
     }
 
     public allFrames(): this {

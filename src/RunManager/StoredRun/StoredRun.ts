@@ -134,8 +134,8 @@ export class StoredRun extends RunHandle {
 
     delete(): this {
         this.unlock();
-        fs.rmSync(this._rootPath, {recursive: true});
         this.destroy();
+        fs.rmSync(this._rootPath, {recursive: true});
         return this;
     }
 

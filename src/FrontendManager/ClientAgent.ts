@@ -71,6 +71,9 @@ export class ClientAgent {
         this._io.on(CHANNELS.PLAY_STOP, this.wh(
             () => this.activePlay().stop()
         ));
+        this._io.on(CHANNELS.PLAY_PAUSE, this.wh(
+            () => this.activePlay().pause()
+        ));
         this._io.on(CHANNELS.PLAY_FRAMERATE, this.wh(
             (framerate: number) => this.activePlay().setFramerate(framerate)
         ));

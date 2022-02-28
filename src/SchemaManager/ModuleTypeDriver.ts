@@ -4,6 +4,7 @@ import {joiMac} from "../Util/MACUtil";
 import {CType} from "c-type-util";
 import {v4} from "uuid";
 import {ModuleDefinition} from "./interfaces/ModuleDefinition";
+import {ModuleDefinitionSchema} from "./schemas/ModuleDefinition";
 
 /**
  * Drives and allows easy interaction with a ModuleTypeDefinition, which describes a type of module.
@@ -16,24 +17,11 @@ export class ModuleTypeDriver {
     constructor(typeDef: ModuleTypeDefinition) {
         this._typeDefinition = typeDef;
         this._combinedConfigSchema = this._typeDefinition.replicatedConfigSchema.concat(this._typeDefinition.persistentConfigSchema);
-        this._definitionSchema = Joi.object({
-            id: Joi.string(),
-            name: Joi.string()
-                .default(`New ${typeDef.typeName}`),
-            description: Joi.string()
-                .allow("")
-                .default(""),
-            mac: Joi.string()
-                .custom(joiMac)
-                .default("00:00:00:00:00:00"), //MAC Id.
-            version: Joi.number()
-                .integer()
-                .default(0), //Unused for now
-            type: Joi.string()
-                .default(typeDef.typeName),
-            config: typeDef.persistentConfigSchema
-                .prefs({allowUnknown: true})
-                .default(this.defaultConfig()),
+        this._definitionSchema = ModuleDefinitionSchema({
+            configSchema: typeDef.persistentConfigSchema,
+            typename: typeDef.typeName,
+            defaultName: `New ${typeDef.typeName}`,
+            defaultConfig: this.defaultConfig(),
         });
     }
 

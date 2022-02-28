@@ -3,6 +3,7 @@ export const CHANNELS = {
 
     PLAY_START: "play_start",
     PLAY_STOP: "play_stop",
+    PLAY_PAUSE: "play_pause",
     PLAY_FRAMERATE: "play_framerate",
 
     // RUNS_LIST: "runs_list",

@@ -41,26 +41,15 @@ export class StoredPlaybackManager extends PlaybackManager {
         let frameInterval = this._run.schemaManager().frameInterval();
 
         if (time == null || frameInterval == null) return this;
-        super.seekTo(time);
 
-        // Read the current frame and callback it to update the client.
-        fs.open(this._run.dataPath(), 'r', (status, fd) => {
-            if (status) throw new Error(status.message);
-            const ct = this._run.schemaManager().storedCType();
-            const b = Buffer.alloc(ct.size);
-            fs.read(fd, b, 0, ct.size, this.position() * ct.size, (err, num) => {
-                //console.log(b);
-                this._callback(ct.readLE(b.buffer, b.byteOffset));
-            });
-        });
-
-        return this;
+        return super.seekTo(time);
     }
 
     createPlayStream() {
         if (this._stream)
             this.stop();
 
+        if (this._run.size() <= this.position()) throw new Error("Attempt to start oversize file stream");
         this._stream = fs.createReadStream(this._run.dataPath(), {start: this.position()})
             .pipe(new CTypeStream(this._run.schemaManager().storedCType()))
             .pipe(new StreamMeter((this._run.schemaManager().frameInterval() ?? 1) * this._state.scale))
@@ -84,7 +73,10 @@ export class StoredPlaybackManager extends PlaybackManager {
 
         else this.createPlayStream()
             .pipe(new EventStreamConsumer())
-            .on("data", this.meterData);
+            .on("data", this.meterData)
+            .on("drain", this.stop)
+            .on("close", this.stop)
+            .on("finish", this.stop);
 
         return super.play();
     }
@@ -93,12 +85,17 @@ export class StoredPlaybackManager extends PlaybackManager {
     position(): number {
         let frameInterval = this._run.schemaManager().frameInterval();
         if (frameInterval == null) throw new Error("Schema frameinterval is null.");
-        return Math.floor(this.time() / frameInterval);
+        return Math.floor(this.time() / frameInterval) * this._run.schemaManager().storedCType().size;
     }
 
     stop(): this {
         this._stream?.destroy();
         this._stream = null;
         return super.stop();
+    }
+
+    protected meterData(data: any) {
+        if (this.shouldIncrementTime()) this._state.time += this._run.schemaManager().frameInterval() ?? 0;
+        super.meterData(data);
     }
 }

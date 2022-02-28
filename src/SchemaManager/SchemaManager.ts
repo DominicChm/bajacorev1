@@ -11,6 +11,8 @@ import {cStruct, CType} from "c-type-util";
 import {InstanceManager} from "./InstanceManager";
 import {SchemaManagerEvents} from "./interfaces/SchemaManagerEvents";
 import {SchemaManagerOptions} from "./interfaces/SchemaManagerOptions";
+import Joi from "joi";
+import {DAQSchemaValidator} from "./schemas/DAQSchema";
 
 const log = logger("SchemaManager");
 
@@ -67,6 +69,8 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
      */
     load(schema: DAQSchema, fullReload: boolean = false): this {
         //Check schema for dupe IDs. Will throw if found.
+        schema = Joi.attempt(schema, DAQSchemaValidator);
+
         checkDuplicates(schema.modules, (m) => m.id);
         const loadedFlag = !this._schema;
 
