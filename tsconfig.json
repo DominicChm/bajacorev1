@@ -5,7 +5,10 @@
     "target": "es2016",
     "sourceMap": true,
     "declaration": true,
-    "strict": true,
+    "declarationMap": true,
+    "skipLibCheck": true,
+
+    //    "strict": true,
     "esModuleInterop": true,
     "outDir": "./dist",
     "lib": [

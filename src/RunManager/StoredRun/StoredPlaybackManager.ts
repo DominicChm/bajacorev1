@@ -1,13 +1,12 @@
 import {PlaybackManager} from "../PlaybackManager";
-import {RealtimeRun} from "../RealtimeRun/RealtimeRun";
 import {StoredRun} from "./StoredRun";
 import fs from "fs-extra";
 import {CTypeStream} from "../CTypeStream";
 import {StreamMeter} from "../StreamMeter";
 import {EventStreamConsumer} from "../EventStreamConsumer";
-import {Stream, Writable} from "stream";
+import {Writable} from "stream";
 import {DataConverterStream} from "../DataConverterStream";
-import {bindClass} from "../../Util/util";
+import {bindThis} from "../../Util/util";
 
 export class StoredPlaybackManager extends PlaybackManager {
     private _run: StoredRun;
@@ -16,7 +15,7 @@ export class StoredPlaybackManager extends PlaybackManager {
 
     constructor(run: StoredRun, convertData: boolean) {
         super("stored", convertData);
-        bindClass(this);
+        bindThis(StoredPlaybackManager, this);
 
         this._run = run;
         this._run.on("destroyed", this.destroy);

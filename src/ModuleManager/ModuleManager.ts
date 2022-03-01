@@ -15,6 +15,7 @@ const log = logger("ModuleManager");
 export interface ModuleManagerOptions {
     mqttUrl: string;
     schemaPath: string;
+    realtimeMetaPath: string;
     aggregationWindow: number;
 }
 
@@ -51,7 +52,7 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
         this._mqtt.on("error", (e) => log(`MQTT ERROR! >${e.message}<`));
 
         this._router = new MqttRouter(this._mqtt);
-        this._run = new RealtimeRun(v4(), opts.schemaPath);
+        this._run = new RealtimeRun(v4(), opts.schemaPath, opts.realtimeMetaPath);
 
         this._run.schemaManager().instanceManager().on("bindInstance", this.bindInstance.bind(this));
         this._run.schemaManager().instanceManager().on("unbindInstance", this.unbindInstance.bind(this));

@@ -2,6 +2,7 @@ import {StoredRun} from "./StoredRun/StoredRun";
 import fs from "fs-extra"
 import * as Path from "path";
 import {TypedEmitter} from "tiny-typed-emitter";
+import {bindThis} from "../Util/util";
 
 interface StoredRunManagerEvents {
     run_change: () => void
@@ -20,6 +21,8 @@ export class StoredRunManager extends TypedEmitter<StoredRunManagerEvents> {
 
     constructor(opts: StoredRunManagerOptions) {
         super();
+        bindThis(StoredRunManager, this);
+
         this._opts = {
             runDataDirectory: Path.resolve(opts.runDataDirectory),
         };
@@ -36,12 +39,13 @@ export class StoredRunManager extends TypedEmitter<StoredRunManagerEvents> {
     }
 
     private async readRuns(): Promise<StoredRun[]> {
-        //Returns read runs. Ignores directories with a `lock` file in them (those are being written)
+        //Returns read runs.
         if (!fs.existsSync(this.runDataDir()))
             throw new Error(`Root directory >${this.runDataDir()}< doesn't exist!`);
 
         const runDirs = await fs.readdir(this.runDataDir());
         this.runs = runDirs.map(dir => new StoredRun(dir, Path.resolve(this.runDataDir(), dir)));
+        this.runs.forEach(r => r.metaManager().on("changed", () => this.emit("run_change")));
         return this.runs;
     }
 

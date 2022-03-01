@@ -3,7 +3,7 @@ import {TypedEmitter} from "tiny-typed-emitter";
 import {ConfigT} from "../moduleTypes/SensorBrakePressure";
 import {ModuleTypeDriver} from "./ModuleTypeDriver";
 import {ModuleInstanceEvents} from "./interfaces/ModuleInstanceEvents";
-import {bindClass} from "../Util/util";
+import {bindThis} from "../Util/util";
 
 /**
  * Manages individual module functions by merging a type definition with an instance definition.
@@ -18,7 +18,7 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
 
     constructor(moduleType: ModuleTypeDriver, moduleDefinition: ModuleDefinition<ConfigT>) {
         super();
-        bindClass(this);
+        bindThis(ModuleInstance, this);
 
         // Definition is initialized a little later
         this._definition = {} as any;

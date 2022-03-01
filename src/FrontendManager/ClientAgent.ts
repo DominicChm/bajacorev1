@@ -5,7 +5,7 @@ import {DAQSchema} from "../SchemaManager/interfaces/DAQSchema";
 import {logger} from "../Util/logging";
 import {PlaybackManager} from "../RunManager/PlaybackManager";
 import {RunHandle} from "../RunManager/RunHandle";
-import {bindClass} from "../Util/util";
+import {bindThis} from "../Util/util";
 import {moduleTypeDefinitions} from "../moduleTypes";
 
 const log = logger("ClientAgent");
@@ -19,7 +19,7 @@ export class ClientAgent {
     private _activePlay: PlaybackManager | null = null;
 
     constructor(io: sio.Socket, rm: RunManager) {
-        bindClass(this);
+        bindThis(ClientAgent, this);
 
         log("new connection - clientAgent");
 
@@ -60,6 +60,8 @@ export class ClientAgent {
                 this.runManager().deleteStoredRun(uuid);
             }
         ));
+        this._io.on("set_run_meta", this.wh(
+            (uuid: string, meta: any) => this.runManager().resolveRun(uuid).metaManager().set(meta)))
         this._io.on(CHANNELS.ACTIVATE_RUN, this.wh(this.activateRun));
         this._io.on(CHANNELS.DEACTIVATE_RUN, this.wh(this.deactivateRun));
     }
@@ -143,7 +145,7 @@ export class ClientAgent {
 
         this._activePlay = this._activeRun.getPlayManager(true)
             .on("stateChanged", this.emitPlayState)
-            .setFramerate(10)
+            .setFramerate(30)
             .callback(this.emitData);
 
         this._activeRun.schemaManager()

@@ -17,14 +17,7 @@ export function checkDuplicates<T, idT>(arr: Array<T>, predicate: (value: T) => 
     });
 }
 
-export function bindClass(c: any) {
-    // Get all defined class methods
-    const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(c));
-
-    // Bind all methods
-    methods
-        .filter(method => (method !== 'constructor'))
-        .forEach((method) => {
-            c[method] = c[method].bind(c);
-        });
+export function bindThis(clazz: any, self: any) {
+    const methodKeys = Reflect.ownKeys(clazz.prototype).filter(k => k !== "constructor");
+    for (const k of methodKeys) self[k] = clazz.prototype[k].bind(self);
 }

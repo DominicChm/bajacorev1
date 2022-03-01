@@ -6,11 +6,13 @@ import {cpSync} from "fs";
 import {PlaybackManager} from "../PlaybackManager";
 import {StoredRunManager} from "../StoredRunManager";
 import {StoredPlaybackManager} from "./StoredPlaybackManager";
+import {bindThis} from "../../Util/util";
 
 export const paths = {
     lockFile: "lock",
     data: "data.daq",
-    schema: "schema.json"
+    schema: "schema.json",
+    meta: "meta.json",
 }
 
 /**
@@ -23,9 +25,8 @@ export class StoredRun extends RunHandle {
     private _size: number = 0;
 
     constructor(uuid: string, rootPath: string) {
-        super("stored", uuid, Path.resolve(rootPath, paths.schema));
-        this.unlink = this.unlink.bind(this);
-        this.writeFrame = this.writeFrame.bind(this);
+        super("stored", uuid, Path.resolve(rootPath, paths.schema), Path.resolve(rootPath, paths.meta), false);
+        bindThis(StoredRun, this);
 
         this._rootPath = rootPath;
         this._isWriting = fs.existsSync(this.resolve(paths.lockFile));

@@ -1,14 +1,14 @@
 import {PlaybackManager} from "../PlaybackManager";
 import {RealtimeRun} from "./RealtimeRun";
-import {bindClass} from "../../Util/util";
-import {bindAll} from "lodash";
+import {bindThis} from "../../Util/util";
+
 
 export class RealtimePlaybackManager extends PlaybackManager {
     private _run: RealtimeRun;
 
     constructor(run: RealtimeRun, convertData: boolean) {
         super("realtime", convertData);
-        bindClass(this);
+        bindThis(RealtimePlaybackManager, this);
 
         this._run = run;
         this._run.on("destroyed", this.destroy);

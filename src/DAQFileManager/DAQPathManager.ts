@@ -4,7 +4,8 @@ import {defaultDAQSchema} from "../SchemaManager/interfaces/DAQSchema";
 
 export const PATHS = {
     runData: "run-data",
-    schema: "realtime-schema.json"
+    schema: "realtime-schema.json",
+    realtimeMeta: "realtime-meta.json"
 }
 
 export class DAQPathManager {
@@ -29,5 +30,9 @@ export class DAQPathManager {
 
     RealtimeSchemaPath() {
         return this.resolve(PATHS.schema)
+    }
+
+    RealtimeMetaPath() {
+        return this.resolve(PATHS.realtimeMeta);
     }
 }

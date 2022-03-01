@@ -23,7 +23,7 @@ const log = logger("SchemaManager");
 export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     private _schema: DAQSchema | null = null;
     private _instanceManager: InstanceManager;
-    private readonly _opts;
+    private readonly _opts: any;
 
     constructor(opts: Partial<SchemaManagerOptions> = {}) {
         super();
@@ -128,7 +128,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
      * @param typeName - The typename that corresponds to a ModuleType
      */
     findDriver(typeName: string): ModuleTypeDriver {
-        const typeDriver = this.moduleDrivers().find(v => v.typeName() === typeName);
+        const typeDriver = this.moduleDrivers().find((v: any) => v.typeName() === typeName);
 
         if (!typeDriver)
             throw new Error(`Couldn't find module with type >${typeName}< when creating definition!`);

@@ -12,6 +12,7 @@ import {StoredRunManager} from "./RunManager/StoredRunManager";
 
     const moduleManager = new ModuleManager({
         schemaPath: daqFileManager.RealtimeSchemaPath(),
+        realtimeMetaPath: daqFileManager.RealtimeMetaPath(),
         mqttUrl: "mqtt://localhost:1883",
         aggregationWindow: 1000,
     });

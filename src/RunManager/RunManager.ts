@@ -84,7 +84,7 @@ export class RunManager extends TypedEmitter<RunManagerEvents> {
         if (typeof run === "string")
             r = this.getRunByUUID<T>(run, runType);
 
-        if (!r)
+        if (!r || !(r instanceof RunHandle))
             throw new Error(`No run could be found with ID >${run}<`);
 
         return r as T;

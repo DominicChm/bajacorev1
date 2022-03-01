@@ -6,8 +6,8 @@ import {RealtimePlaybackManager} from "./RealtimePlaybackManager";
  * Describes a run that's happening "right now". Used for streaming data from modules in real-time.
  */
 export class RealtimeRun extends RunHandle {
-    constructor(uuid: string, schemaPath: string) {
-        super("realtime", uuid, schemaPath);
+    constructor(uuid: string, schemaPath: string, metaPath: string) {
+        super("realtime", uuid, schemaPath, metaPath, true);
     }
 
     //Raw JSON data
