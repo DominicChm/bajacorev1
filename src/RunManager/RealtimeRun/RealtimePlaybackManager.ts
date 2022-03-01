@@ -48,7 +48,13 @@ export class RealtimePlaybackManager extends PlaybackManager {
     }
 
     protected meterData(data: any) {
+        //TODO: DON'T EMIT THIS CRAP AT FULL RATE!!!
         if (this._state.playing) this._state.time += this._run.schemaManager().frameInterval() ?? 0;
+
+        //TODO: Move this into the superclass
+        if (this.convertingEnabled())
+            data = this._run.schemaManager().instanceManager().raw2human(data)
+
         super.meterData(data);
     }
 }

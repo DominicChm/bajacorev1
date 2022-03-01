@@ -15,6 +15,7 @@ const log = logger("InstanceManager");
 export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
     private _schemaManager: SchemaManager;
     private _instances: Map<string, ModuleInstance> = new Map();
+    private _converters: Map<string, any>;
 
     constructor(manager: SchemaManager) {
         super();
@@ -92,6 +93,11 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
         creations.forEach(i => this.emit("bindInstance", i));
         changes.forEach(i => this.emit("rebindInstance", i));
 
+        this._converters = new Map()
+        for (const instance of this.instances()) {
+            this._converters.set(instance.id(), instance.stored2human)
+        }
+
         return {
             definitions: this.moduleDefinitions(),
             loadResults: {
@@ -144,5 +150,14 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
 
     instances() {
         return Array.from(this._instances.values());
+    }
+
+    public raw2human(rawData: any) {
+        const convertedData: any = {};
+        for (const [uuid, converter] of this._converters) {
+            convertedData[uuid] = converter(rawData[uuid]);
+        }
+
+        return convertedData;
     }
 }

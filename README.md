@@ -19,7 +19,7 @@ Note I didn't include (substantial) stuff that was completed a long time ago.
 - [x] Data translation (Convert raw analog value into PSI, for example. Probably a playbackManager setting...)
 - [x] Validation of entire schema. Currently, only modules are validated. (~1hr) (Part of v2 UI)
 - [x] Streamline stored playback manager (get rid of manual file read, replace with play for 1 frame.)
-- [ ] Metadata file. (Name, desc, time created, length, etc...). Probably JSON. Part of storedRun? Or both? (~2hr) (Part of v2 UI)
+- [x] Metadata file. (Name, desc, time created, length, etc...). Probably JSON. Part of storedRun? Or both? (~2hr) (Part of v2 UI)
 - [ ] UI (User Interface) Version 2. (A lot of time...) (In progress)
 - [ ] Test configuration emission. (IDK)
 - [ ] Refactor to allow config extension with common values, like frame interval. (POSSIBLY MODIFY CTYPES FOR THIS FUNCTIONALITY??) (~3hr?)
