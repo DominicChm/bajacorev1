@@ -1,8 +1,9 @@
 export interface RunEvents {
     destroyed: () => void;
     formatChanged: () => void;
-    raw_data: (data: ArrayBuffer, timestamp: number) => void;
-    data: (data: any, timestamp: number) => void;
+
+    dataConverted: (data: any) => void;
+    data: (data: any) => void;
 
     unlink: () => void;
     link: () => void;

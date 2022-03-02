@@ -1,17 +1,17 @@
 import {PlaybackManager} from "../PlaybackManager";
 import {StoredRun} from "./StoredRun";
-import fs from "fs-extra";
-import {CTypeStream} from "../CTypeStream";
-import {StreamMeter} from "../StreamMeter";
-import {EventStreamConsumer} from "../EventStreamConsumer";
-import {Writable} from "stream";
-import {DataConverterStream} from "../DataConverterStream";
+import {pipeline, Readable, Stream, Writable} from "stream";
 import {bindThis} from "../../Util/util";
+
+import {ChunkCounter, ChunkLimiter, EventStreamConsumer, FramerateLimiter, TemporalStream} from "../../StreamUtils";
+import {StreamPauser} from "../../StreamUtils/StreamPauser";
+import WritableStream = NodeJS.WritableStream;
+
 
 export class StoredPlaybackManager extends PlaybackManager {
     private _run: StoredRun;
-    private _stream: Writable | null = null;
-
+    private _stream: Writable | null;
+    private _streamChunks: any;
 
     constructor(run: StoredRun, convertData: boolean) {
         super("stored", convertData);
@@ -44,38 +44,52 @@ export class StoredPlaybackManager extends PlaybackManager {
         return super.seekTo(time);
     }
 
-    createPlayStream() {
+    createStreamChunks() {
         if (this._stream)
             this.stop();
 
         if (this._run.size() <= this.position()) throw new Error("Attempt to start oversize file stream");
-        this._stream = fs.createReadStream(this._run.dataPath(), {start: this.position()})
-            .pipe(new CTypeStream(this._run.schemaManager().storedCType()))
-            .pipe(new StreamMeter((this._run.schemaManager().frameInterval() ?? 1) * this._state.scale))
 
-        if (this.convertingEnabled())
-            return this._stream.pipe(new DataConverterStream(this._run.schemaManager()));
-        else
-            return this._stream;
+        return {
+            readStream: this._run.getDataStream(this.time(), this.convertingEnabled()),
+            pauseStream: new StreamPauser(),
+            temporalStream: new TemporalStream(this._run.schemaManager().frameInterval() * this._state.scale),
+            counter: new ChunkCounter(this.time(), this._run.schemaManager().frameInterval(), "time"),
+            limiter: new FramerateLimiter(1000 / this._state.framerate)
+        }
     }
 
-    pause() {
-        if (!this._stream) throw new Error("Can't play - Playback is stopped!");
-        this._stream.cork();
 
+    pause() {
+        if (!this._stream || !this._streamChunks.pauseStream) throw new Error("Can't play - Playback is stopped!");
+        this._streamChunks.pauseStream.pauseStream();
+        console.log("PAUSE");
         return super.pause();
     }
 
     play(): this {
         if (this._stream)  //Handle an un-pause.
-            this._stream.uncork();
+            this._streamChunks.pauseStream.resumeStream();
 
-        else this.createPlayStream()
-            .pipe(new EventStreamConsumer())
-            .on("data", this.meterData)
-            .on("drain", this.stop)
-            .on("close", this.stop)
-            .on("finish", this.stop);
+        else {
+            this._streamChunks = {
+                ...this.createStreamChunks(),
+                target: new EventStreamConsumer()
+                    .on("data", this.runCB)
+                    .on("data", console.log)
+                    .on("drain", this.stop)
+                    .on("close", this.stop)
+                    .on("finish", this.stop)
+            }
+
+            this._stream = null;
+            for (const v of Object.values(this._streamChunks)) {
+                if (this._stream)
+                    this._stream = this._stream.pipe(v as Writable);
+                else
+                    this._stream = v as Writable;
+            }
+        }
 
         return super.play();
     }
@@ -90,11 +104,7 @@ export class StoredPlaybackManager extends PlaybackManager {
     stop(): this {
         this._stream?.destroy();
         this._stream = null;
-        return super.stop();
-    }
 
-    protected meterData(data: any) {
-        if (this.shouldIncrementTime()) this._state.time += this._run.schemaManager().frameInterval() ?? 0;
-        super.meterData(data);
+        return super.stop();
     }
 }

@@ -4,13 +4,14 @@ import {PlaybackManagerEvents} from "./interfaces/PlayManagerEvents";
 import {PlaybackManagerState} from "./interfaces/PlayManagerState";
 import * as Process from "process";
 import {performance} from "perf_hooks";
+import {bindThis} from "../Util/util";
 
 export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents> {
     private readonly _convertingEnabled: boolean;
     private _frameIsDebounced: boolean = false;
     protected _state: PlaybackManagerState;
     protected _callback: (frame: any) => void;
-    private _numFrames: number = 0; // Number of frames to play. 0 = disabled.
+    private _frameLimit: number = 0; // Number of frames to play. 0 = disabled.
     protected _firstFrameSent = false;
 
     private _seekDebounced = false;
@@ -18,6 +19,8 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
 
     protected constructor(playType: "realtime" | "stored", convertingEnabled: boolean) {
         super();
+        bindThis(PlaybackManager, this);
+
         this._callback = () => {
         };
         this._state = onChange({
@@ -28,7 +31,6 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
             framerate: 10,
             playType
         }, this.onStateChange.bind(this));
-        this.meterData = this.meterData.bind(this);
         this._convertingEnabled = convertingEnabled;
     }
 
@@ -63,35 +65,29 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
         this._frameIsDebounced = false;
         this._state.playing = false;
         this._state.paused = false;
+
+        this.setFrameLimit(0);
         return this;
     };
 
     seekTo(time: number): this {
         if (time == null) return this;
+
         this._state.time = time;
 
-        if (this._seekDebounced) {
+        if (!this._seekTimeout) this._execSeek();
+        this._seekTimeout ||= setTimeout(this._execSeek, 100);
 
-            if (!this._seekTimeout) this._seekTimeout = setTimeout(() => {
-                this._seekDebounced = false;
-                try {
-                    this.seekTo(this._state.time)
-                } catch (e: any) {
-                    console.warn(e.message);
-                }
-            }, 100);
-
-        } else {
-            this._seekDebounced = true;
-            this._seekTimeout = null;
-
-            this.stop();
-
-            this.setFrameLimit(1);
-            this.play()
-        }
         return this;
     };
+
+    //Internal seekto handler
+    private _execSeek() {
+        this.stop();
+
+        this.setFrameLimit(1);
+        this.play();
+    }
 
     setFramerate(rate?: number): this {
         if (rate != null) this._state.framerate = rate;
@@ -105,7 +101,7 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
     };
 
     setFrameLimit(frames: number) {
-        this._numFrames = frames;
+        this._frameLimit = frames;
     }
 
     abstract destroy(): this;
@@ -123,29 +119,11 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
      * set framerate so that readers aren't overwhelmed. Doesn't control
      * speed of playback.
      */
-    protected meterData(data: any) {
+    protected runCB(data: any) {
         if (!this.state().playing)
             return;
 
-        if (this._frameIsDebounced)
-            return;
-
-        if (this._state.framerate > 0) {
-            this._frameIsDebounced = true;
-            let l = setTimeout(() => {
-                this._frameIsDebounced = false
-            }, 1000 / this._state.framerate);
-        }
-
-        this._firstFrameSent = true;
         this._callback(data);
-
-        // Pause playback if we ran out of frames to play.
-        // Pause if 1, bc the subsequent decrement will make this 0 and therefore disable the frame count.
-        if (this._numFrames === 1) this.pause();
-
-        // Decrement number of frames left, if more than 0.
-        if (this._numFrames > 0) this._numFrames--;
     }
 
     protected shouldIncrementTime(): boolean {

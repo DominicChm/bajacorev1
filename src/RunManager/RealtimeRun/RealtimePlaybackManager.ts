@@ -12,12 +12,10 @@ export class RealtimePlaybackManager extends PlaybackManager {
 
         this._run = run;
         this._run.on("destroyed", this.destroy);
-        this._run.on("data", this.meterData);
     }
 
     destroy(): this {
         this.stop();
-        this._run.off("data", this.meterData);
         this._run.off("destroyed", this.destroy);
         return this;
     }
@@ -36,6 +34,7 @@ export class RealtimePlaybackManager extends PlaybackManager {
 
     play(): this {
         this._state.time = 0;
+        this._run.getDataStream(0, this.convertingEnabled()).on("data", this.runCB.bind(this));
         return super.play();
     }
 
@@ -47,14 +46,7 @@ export class RealtimePlaybackManager extends PlaybackManager {
         return this.stop();
     }
 
-    protected meterData(data: any) {
-        //TODO: DON'T EMIT THIS CRAP AT FULL RATE!!!
-        if (this._state.playing) this._state.time += this._run.schemaManager().frameInterval() ?? 0;
-
-        //TODO: Move this into the superclass
-        if (this.convertingEnabled())
-            data = this._run.schemaManager().instanceManager().raw2human(data)
-
-        super.meterData(data);
+    createPlayStream() {
+        throw new Error("Method not implemented.");
     }
 }

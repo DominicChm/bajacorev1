@@ -4,6 +4,8 @@ import {PlaybackManager} from "./PlaybackManager";
 import {RunEvents} from "./interfaces/RunEvents";
 import {RunMetaManager} from "./RunMetaManager";
 import {bindThis} from "../Util/util";
+import {Stream} from "stream";
+import {CTypeStream, DataConverterStream} from "../StreamUtils";
 
 export abstract class RunHandle extends TypedEmitter<RunEvents> {
     private readonly _uuid;
@@ -54,5 +56,15 @@ export abstract class RunHandle extends TypedEmitter<RunEvents> {
 
     public metaManager() {
         return this._metaManager;
+    }
+
+    abstract getDataStream(time: number, convert: boolean): Stream;
+
+    public getConversionTransform() {
+        return new DataConverterStream(this.schemaManager().instanceManager());
+    }
+
+    public getCTypeTransform() {
+        return new CTypeStream(this.schemaManager().storedCType());
     }
 }

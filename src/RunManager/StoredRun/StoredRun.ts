@@ -3,10 +3,10 @@ import fs from "fs-extra";
 import {RunHandle} from "../RunHandle";
 import {RealtimeRun} from "../RealtimeRun/RealtimeRun";
 import {cpSync} from "fs";
-import {PlaybackManager} from "../PlaybackManager";
-import {StoredRunManager} from "../StoredRunManager";
 import {StoredPlaybackManager} from "./StoredPlaybackManager";
 import {bindThis} from "../../Util/util";
+import {Readable, Stream} from "stream";
+import {CTypeStream, DataConverterStream} from "../../StreamUtils";
 
 export const paths = {
     lockFile: "lock",
@@ -78,12 +78,7 @@ export class StoredRun extends RunHandle {
      */
     public writeFrame(data: any) {
         const buf = this.schemaManager().storedCType().allocLE(data);
-        //console.log(buf);
         this.writeRaw(new Uint8Array(buf));
-    }
-
-    public getFrame(timestamp: number): Uint8Array {
-        return new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     }
 
     public dataPath() {
@@ -140,7 +135,6 @@ export class StoredRun extends RunHandle {
         return this;
     }
 
-    //TODO: Implement periodic size polling.
     size(): number {
         if (this.destroyed())
             return 0;
@@ -163,5 +157,27 @@ export class StoredRun extends RunHandle {
     destroy() {
         this.unlink();
         super.destroy();
+    }
+
+    getDataStream(time: number, convert: boolean): Readable {
+        let frameInterval = this.schemaManager().frameInterval();
+        if (frameInterval == null) throw new Error("Schema frameinterval is null.");
+        let startPosition = Math.floor(time / frameInterval) * this.schemaManager().storedCType().size;
+
+        const s = fs.createReadStream(this.dataPath(), {start: startPosition})
+            .pipe(new CTypeStream(this.schemaManager().storedCType()));
+
+        if (convert)
+            return s.pipe(new DataConverterStream(this.schemaManager().instanceManager()));
+        else
+            return s;
+    }
+
+    getRawStream(time: number) {
+        let frameInterval = this.schemaManager().frameInterval();
+        if (frameInterval == null) throw new Error("Schema frameinterval is null.");
+        let startPosition = Math.floor(time / frameInterval) * this.schemaManager().storedCType().size;
+
+        return fs.createReadStream(this.dataPath(), {start: startPosition})
     }
 }

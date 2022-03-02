@@ -104,7 +104,7 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     // TODO: REPLACE THIS GARBAGE! TIMING WILL N O T BE ACCURATE WITH THIS APPROACH.
     //  DATA IS SUSCEPTIBLE TO UP TO 500ms DELAYS BC OF WIFI INTERFERENCE!
     private dispatchData() {
-        this._run?.feedData(this._data, 0);
+        this._run?.feedData(this._data);
     }
 
     unbindInstance(instance: ModuleInstance) {
