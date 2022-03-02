@@ -28,10 +28,6 @@ export class RealtimePlaybackManager extends PlaybackManager {
         return super.setFramerate(rate);
     }
 
-    seekTo(time?: number): this {
-        throw new Error("Can't seek a realtime run");
-    }
-
     play(): this {
         this._state.time = 0;
         this._run.getDataStream(0, this.convertingEnabled()).on("data", this.runCB.bind(this));

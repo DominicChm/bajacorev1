@@ -7,6 +7,7 @@ import {PlaybackManager} from "../RunManager/PlaybackManager";
 import {RunHandle} from "../RunManager/RunHandle";
 import {bindThis} from "../Util/util";
 import {moduleTypeDefinitions} from "../moduleTypes";
+import {StoredPlaybackManager} from "../RunManager/StoredRun/StoredPlaybackManager";
 
 const log = logger("ClientAgent");
 
@@ -80,7 +81,12 @@ export class ClientAgent {
             (framerate: number) => this.activePlay().setFramerate(framerate)
         ));
         this._io.on("play_seek", this.wh(
-            (time: number) => this.activePlay().seekTo(time)
+            (time: number) => {
+                if (this._activePlay instanceof StoredPlaybackManager)
+                    this._activePlay.seekTo(time);
+                else
+                    throw new Error("Can't seek a realtime run!");
+            }
         ));
     }
 

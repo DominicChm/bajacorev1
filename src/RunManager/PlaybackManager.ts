@@ -8,14 +8,9 @@ import {bindThis} from "../Util/util";
 
 export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents> {
     private readonly _convertingEnabled: boolean;
-    private _frameIsDebounced: boolean = false;
     protected _state: PlaybackManagerState;
     protected _callback: (frame: any) => void;
     private _frameLimit: number = 0; // Number of frames to play. 0 = disabled.
-    protected _firstFrameSent = false;
-
-    private _seekDebounced = false;
-    private _seekTimeout: any = undefined;
 
     protected constructor(playType: "realtime" | "stored", convertingEnabled: boolean) {
         super();
@@ -51,8 +46,6 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
     play(): this {
         this._state.playing = true;
         this._state.paused = false;
-        this._frameIsDebounced = false;
-        this._firstFrameSent = false;
         return this;
     }
 
@@ -62,7 +55,6 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
     }
 
     stop(): this {
-        this._frameIsDebounced = false;
         this._state.playing = false;
         this._state.paused = false;
 
@@ -70,28 +62,8 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
         return this;
     };
 
-    seekTo(time: number): this {
-        if (time == null) return this;
-
-        this._state.time = time;
-
-        if (!this._seekTimeout) this._execSeek();
-        this._seekTimeout ||= setTimeout(this._execSeek, 100);
-
-        return this;
-    };
-
-    //Internal seekto handler
-    private _execSeek() {
-        this.stop();
-
-        this.setFrameLimit(1);
-        this.play();
-    }
-
     setFramerate(rate?: number): this {
         if (rate != null) this._state.framerate = rate;
-        this._frameIsDebounced = false;
         return this;
     };
 
@@ -123,11 +95,12 @@ export abstract class PlaybackManager extends TypedEmitter<PlaybackManagerEvents
         if (!this.state().playing)
             return;
 
+        this._state.time = data.time;
         this._callback(data);
-    }
 
-    protected shouldIncrementTime(): boolean {
-        return this._state.playing && this._firstFrameSent;
+        if (this._frameLimit > 0 && this._frameLimit-- === 1)
+            this.pause();
+
     }
 
     public allFrames(): this {

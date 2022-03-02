@@ -42,7 +42,7 @@ Note I didn't include (substantial) stuff that was completed a long time ago.
 - [ ] File watching schemas (meh)
 
 ### Known Issues
-- Seeks need to be throttled. They currently overwhelm the front and backend.
+
 ## Ongoing things...
 
 - [ ] Doc

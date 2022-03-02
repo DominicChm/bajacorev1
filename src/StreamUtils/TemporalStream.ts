@@ -20,4 +20,14 @@ export class TemporalStream extends Transform {
         if (this._interval > 0) setTimeout(callback, this._interval);
         else callback();
     }
+
+    pauseStream() {
+        this.cork();
+        this.pause();
+    }
+
+    resumeStream() {
+        this.uncork();
+        this.resume();
+    }
 }

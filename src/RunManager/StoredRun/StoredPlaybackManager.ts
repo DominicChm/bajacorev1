@@ -6,6 +6,8 @@ import {bindThis} from "../../Util/util";
 import {ChunkCounter, ChunkLimiter, EventStreamConsumer, FramerateLimiter, TemporalStream} from "../../StreamUtils";
 import {StreamPauser} from "../../StreamUtils/StreamPauser";
 import WritableStream = NodeJS.WritableStream;
+import {pipeChunks} from "../../StreamUtils/PipeChunks";
+import {Throttle} from "../../Util/Throttle";
 
 
 export class StoredPlaybackManager extends PlaybackManager {
@@ -13,12 +15,16 @@ export class StoredPlaybackManager extends PlaybackManager {
     private _stream: Writable | null;
     private _streamChunks: any;
 
+    private _seekThrottle: Throttle;
+
     constructor(run: StoredRun, convertData: boolean) {
         super("stored", convertData);
         bindThis(StoredPlaybackManager, this);
 
         this._run = run;
         this._run.on("destroyed", this.destroy);
+
+        this._seekThrottle = new Throttle(this._execSeek, 100);
     }
 
     destroy(): this {
@@ -41,7 +47,22 @@ export class StoredPlaybackManager extends PlaybackManager {
 
         if (time == null || frameInterval == null) return this;
 
-        return super.seekTo(time);
+        this._state.time = time;
+
+        this._seekThrottle.call();
+
+        return this;
+    }
+
+    _execSeek() {
+        try {
+            this.stop();
+            this.setFrameLimit(1);
+            this.play();
+        } catch (e) {
+            console.error(e);
+        }
+
     }
 
     createStreamChunks() {
@@ -52,7 +73,6 @@ export class StoredPlaybackManager extends PlaybackManager {
 
         return {
             readStream: this._run.getDataStream(this.time(), this.convertingEnabled()),
-            pauseStream: new StreamPauser(),
             temporalStream: new TemporalStream(this._run.schemaManager().frameInterval() * this._state.scale),
             counter: new ChunkCounter(this.time(), this._run.schemaManager().frameInterval(), "time"),
             limiter: new FramerateLimiter(1000 / this._state.framerate)
@@ -61,15 +81,15 @@ export class StoredPlaybackManager extends PlaybackManager {
 
 
     pause() {
-        if (!this._stream || !this._streamChunks.pauseStream) throw new Error("Can't play - Playback is stopped!");
-        this._streamChunks.pauseStream.pauseStream();
+        if (!this._stream || !this._streamChunks.temporalStream) throw new Error("Can't play - Playback is stopped!");
+        this._streamChunks.temporalStream.pauseStream();
         console.log("PAUSE");
         return super.pause();
     }
 
     play(): this {
         if (this._stream)  //Handle an un-pause.
-            this._streamChunks.pauseStream.resumeStream();
+            this._streamChunks.temporalStream.resumeStream();
 
         else {
             this._streamChunks = {
@@ -82,18 +102,11 @@ export class StoredPlaybackManager extends PlaybackManager {
                     .on("finish", this.stop)
             }
 
-            this._stream = null;
-            for (const v of Object.values(this._streamChunks)) {
-                if (this._stream)
-                    this._stream = this._stream.pipe(v as Writable);
-                else
-                    this._stream = v as Writable;
-            }
+            this._stream = pipeChunks(this._streamChunks);
         }
 
         return super.play();
     }
-
 
     position(): number {
         let frameInterval = this._run.schemaManager().frameInterval();
@@ -101,9 +114,12 @@ export class StoredPlaybackManager extends PlaybackManager {
         return Math.floor(this.time() / frameInterval) * this._run.schemaManager().storedCType().size;
     }
 
+
     stop(): this {
         this._stream?.destroy();
+
         this._stream = null;
+        this._streamChunks = null;
 
         return super.stop();
     }
