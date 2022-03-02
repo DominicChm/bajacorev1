@@ -41,6 +41,10 @@ export class FrontendManager {
      */
     private dlCSV(req: Request, res: Response) {
         const run = this._runManager.resolveRun(req.params.uuid, StoredRun);
+
+        //Force the browser to download the file instead of rendering it.
+        res.setHeader('Content-disposition', 'attachment; filename=' + run.metaManager().name() + ".csv");
+        res.setHeader("content-type", "text/csv");
         run.getDataStream(0, false)
             .pipe(new DataRenamerStream(run.schemaManager()))
             .pipe(new CSVEncoderStream(run.schemaManager().frameInterval()))
