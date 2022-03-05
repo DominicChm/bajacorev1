@@ -3,7 +3,7 @@ import {ModuleDefinition} from "./ModuleDefinition";
 export interface DAQSchema {
     name: string;
     frameInterval: number;
-    modules: ModuleDefinition<any>[];
+    modules: ModuleDefinition[];
 }
 
 export const defaultDAQSchema: DAQSchema = {

@@ -27,11 +27,11 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
      * like a type change.
      * @private
      */
-    private isInstanceInvalid(instance: ModuleInstance, definition: ModuleDefinition<any>): boolean {
+    private isInstanceInvalid(instance: ModuleInstance, definition: ModuleDefinition): boolean {
         return instance.definition().type !== definition.type;
     }
 
-    private definitionToMap(def: ModuleDefinition<any>[]) {
+    private definitionToMap(def: ModuleDefinition[]) {
         return new Map(def.map(d => [d.id, d]));
     }
 
@@ -40,7 +40,7 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
      * @param defs
      * @param throwOnBreak
      */
-    loadModuleDefinitions(defs: ModuleDefinition<any>[], throwOnBreak: boolean = false) {
+    loadModuleDefinitions(defs: ModuleDefinition[], throwOnBreak: boolean = false) {
         checkDuplicates(defs, (m) => m.id);
 
         const mappedDefs = this.preprocessDefinition(this.definitionToMap(defs), throwOnBreak);
@@ -115,7 +115,7 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
      * @param throwOnBreak
      * @private
      */
-    private preprocessDefinition(mappedDefs: Map<string, ModuleDefinition<any>>, throwOnBreak: boolean = false): Map<string, ModuleDefinition<any>> {
+    private preprocessDefinition(mappedDefs: Map<string, ModuleDefinition>, throwOnBreak: boolean = false): Map<string, ModuleDefinition> {
         for (const [uuid, definition] of mappedDefs) {
             const driver = this._schemaManager.findDriver(definition.type);
             const instance = this.instance(uuid);
@@ -136,7 +136,7 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
         return mappedDefs;
     }
 
-    private moduleDefinitions(): ModuleDefinition<any>[] {
+    private moduleDefinitions(): ModuleDefinition[] {
         return Array.from(this._instances).map(([uuid, instance]) => instance.definition());
     }
 

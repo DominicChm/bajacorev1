@@ -1,13 +1,13 @@
-import Joi from "joi";
-import {CType} from "c-type-util"
+import Joi, {SchemaMap} from "joi";
+import {CType, StructMembers} from "c-type-util"
 
 export interface ModuleTypeDefinition {
     typeName: string,
-    persistentConfigSchema: Joi.ObjectSchema,
-    replicatedConfigSchema: Joi.ObjectSchema,
-    replicatedConfigCType: CType<any>,
-    rawCType: CType<any>,
-    storageCType: CType<any>,
+    persistentConfigSchema: SchemaMap,
+    replicatedConfigSchema: SchemaMap,
+    replicatedConfigCType: StructMembers<any>,
+    rawCType: StructMembers<any>,
+    storageCType: StructMembers<any>,
 
     // Converts raw input data (from actual modules) into something intelligible by a human.
     // stored2Human is passed as a starting point for conversion (raw data should always have more or equal

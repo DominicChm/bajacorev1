@@ -18,8 +18,8 @@ export class FileSchemaManager extends SchemaManager {
         this.load(json);
     }
 
-    public writeSchema(schema: DAQSchema) {
-        fs.outputJSONSync(this._filePath, schema, {spaces: 2});
+    public writeSchema(schema: DAQSchema, persistentSchema: DAQSchema) {
+        fs.outputJSONSync(this._filePath, persistentSchema, {spaces: 2});
     }
 
     public filePath() {

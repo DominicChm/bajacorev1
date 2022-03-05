@@ -23,7 +23,8 @@ const log = logger("SchemaManager");
 export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     private _schema: DAQSchema | null = null;
     private _instanceManager: InstanceManager;
-    private readonly _opts: any;
+    private readonly _opts: SchemaManagerOptions;
+    private readonly _moduleTypeDrivers: ModuleTypeDriver[];
 
     constructor(opts: Partial<SchemaManagerOptions> = {}) {
         super();
@@ -31,9 +32,15 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
             moduleTypes: moduleTypeDefinitions,
             breakingAllowed: true,
             ...opts,
-
-            moduleDrivers: moduleTypeDefinitions.map(v => new ModuleTypeDriver(v)),
         };
+
+        this._moduleTypeDrivers = moduleTypeDefinitions.map(v => new ModuleTypeDriver(v));
+
+
+        //Validate drivers
+        checkDuplicates(this._moduleTypeDrivers, m => m.typeName());
+        checkDuplicates(this._moduleTypeDrivers, m => m.typeHash());
+
 
         this.load = this.load.bind(this);
         this.moduleTypes = this.moduleTypes.bind(this);
@@ -54,7 +61,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
     }
 
     moduleDrivers() {
-        return this._opts.moduleDrivers;
+        return this._moduleTypeDrivers;
     }
 
     doesNewSchemaBreak(schema: DAQSchema) {
@@ -86,13 +93,13 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         };
 
         if (loadedFlag)
-            this.emit("load", this.schema());
+            this.emit("load", this.schema(), this.persistentSchema());
         else
-            this.emit("update", this.schema());
+            this.emit("update", this.schema(), this.persistentSchema());
 
         if (loadResults.deleted > 0 || loadResults.created > 0 || broken) {
             log("Format broken");
-            this.emit("formatBroken", this.schema());
+            this.emit("formatBroken", this.schema(), this.persistentSchema());
         }
 
         return this;
@@ -103,7 +110,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
      * @param def
      * @private
      */
-    private validateDefinition(def: ModuleDefinition<any>) {
+    private validateDefinition(def: ModuleDefinition) {
         return this.findDriver(def.type).validateDefinition(def);
     }
 
@@ -116,6 +123,13 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
 
         return cloneDeep(this._schema);
 
+    }
+
+    public persistentSchema(): DAQSchema {
+        return {
+            ...this._schema,
+            modules: this._instanceManager.instances().map(i => i.persistentDefinition()),
+        }
     }
 
     //Adds a bare-minimum definition to the schema.
@@ -140,7 +154,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
      * Validates and adds a moduleDefinition to this schema
      * @param def - the ModuleDefinition to add.
      */
-    addModule(def: ModuleDefinition<any>): this {
+    addModule(def: ModuleDefinition): this {
         log(`Adding: ${def.mac}`);
 
         def = this.findDriver(def.type).validateDefinition(def);

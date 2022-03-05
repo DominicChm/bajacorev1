@@ -1,6 +1,5 @@
 import {ModuleDefinition} from "./interfaces/ModuleDefinition";
 import {TypedEmitter} from "tiny-typed-emitter";
-import {ConfigT} from "../moduleTypes/SensorBrakePressure";
 import {ModuleTypeDriver} from "./ModuleTypeDriver";
 import {ModuleInstanceEvents} from "./interfaces/ModuleInstanceEvents";
 import {bindThis} from "../Util/util";
@@ -9,20 +8,29 @@ import {bindThis} from "../Util/util";
  * Manages individual module functions by merging a type definition with an instance definition.
  * Drives a ModuleTypeDefinition. Handles mutation of module definition and linking events,
  * as well as data serialization and deserialization.
+ *
+ * The moduleDefinition this holds is DIFFERENT to what is persisted!!!
+ * It holds the total config in its definition.
  */
 export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
     private readonly _moduleType: ModuleTypeDriver;
-    private _definition: ModuleDefinition<ConfigT>;
-
+    private _definition: ModuleDefinition;
     private _data: any | undefined;
+    private _config: any;
 
-    constructor(moduleType: ModuleTypeDriver, moduleDefinition: ModuleDefinition<ConfigT>) {
+    constructor(moduleType: ModuleTypeDriver, moduleDefinition: ModuleDefinition) {
         super();
         bindThis(ModuleInstance, this);
 
         // Definition is initialized a little later
         this._definition = {} as any;
         this._moduleType = moduleType;
+
+        // Merge the persisted config with a default total config to make the held definition total.
+        moduleDefinition.config = {
+            ...moduleType.defaultConfig(),
+            ...moduleType.validatePersistentConfig(moduleDefinition.config),
+        }
 
         this.setDefinition(moduleDefinition);
     }
@@ -34,7 +42,7 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
      * @param storedData
      */
     protected convertStored(storedData: any): any {
-        this._moduleType.stored2Human(storedData, this.config());
+        this._moduleType.stored2Human(storedData, this.totalConfig());
     }
 
     /**
@@ -44,7 +52,7 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
      * @param rawData
      */
     protected convertRaw(rawData: any): any {
-        return this._moduleType.raw2Human(rawData, this.config());
+        return this._moduleType.raw2Human(rawData, this.totalConfig());
     }
 
     /**
@@ -52,7 +60,7 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
      * @param def
      * @return {boolean} - Whether the passed definition potentially broke bindings
      */
-    public setDefinition(def: ModuleDefinition<ConfigT>): boolean {
+    public setDefinition(def: ModuleDefinition): boolean {
         this._definition = this._moduleType.validateDefinition(def); //Deep copy definition to leave original intact
         return false;
     }
@@ -65,12 +73,25 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
     }
 
     public replicatedConfig() {
-        return this._moduleType.validateReplicatedConfig(this.config());
+        //console.log(this.totalConfig())
+        return this._moduleType.validateReplicatedConfig(this.totalConfig());
     }
 
-    public config(): ConfigT {
+    public totalConfig(): Object {
         return this._definition.config;
     }
+
+    public persistentConfig() {
+        return this._moduleType.validatePersistentConfig(this.totalConfig());
+    }
+
+    public persistentDefinition(): ModuleDefinition {
+        return {
+            ...this._definition,
+            config: this.persistentConfig(),
+        }
+    }
+
 
     public mac() {
         return this._definition.mac;
@@ -112,6 +133,6 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
     }
 
     stored2human(data: any) {
-        return this._moduleType.stored2Human(data, this.config());
+        return this._moduleType.stored2Human(data, this.totalConfig());
     }
 }

@@ -14,15 +14,16 @@ export const BlankModule: ModuleTypeDefinition = {
     // Persistent and replicated config do NOT need to be the same - this is desirable.
     // Identical keys between config types are merged (treated as same)
     // Persistent config takes priority over replicated!!!!
-    persistentConfigSchema: Joi.object({}),
-    replicatedConfigSchema: Joi.object({}),
-    replicatedConfigCType: cStruct({}),
+    persistentConfigSchema: {},
+    replicatedConfigSchema: {},
 
     // Raw describes the binary data coming in from the module.
     // Storage describes the data being stored to/from disk.
     // Storage should be a sub-type of Raw, such that some raw values might not be stored.
-    rawCType: cStruct({}),
-    storageCType: cStruct({}),
+    rawCType: {},
+    storageCType: {},
+    replicatedConfigCType: {},
+
     raw2Human(raw: any, config: any, stored2Human: any): any {
         return stored2Human(raw, config);
     },
