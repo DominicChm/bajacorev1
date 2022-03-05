@@ -14,6 +14,7 @@ export class InstanceBinding {
     private readonly _dataChannel;
     private readonly _dataListener;
     private _configChannel: string;
+    private _typeChannel: string;
 
     constructor(instance: ModuleInstance, router: MqttRouter, dataListener: bindingDataListener) {
         this.unbind = this.unbind.bind(this);
@@ -28,6 +29,8 @@ export class InstanceBinding {
 
         this._dataChannel = `car/${instance.mac()}/raw`;
         this._configChannel = `car/${instance.mac()}/config`;
+        // TODO: PUBLISH ARRAY OF SUPPORTED MODULE TYPE HASHES HERE.
+        this._typeChannel = `car/${instance.mac()}/supported_types`;
 
         router.publish(this._configChannel, Buffer.from(instance.replicatedBinConfig())); //  JSON.stringify(instance.replicatedConfig())
         router.on(this._dataChannel, this._mqttListener);
