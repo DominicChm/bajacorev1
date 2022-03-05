@@ -45,7 +45,7 @@ export class FrontendManager {
         //Force the browser to download the file instead of rendering it.
         res.setHeader('Content-disposition', 'attachment; filename=' + run.metaManager().name() + ".csv");
         res.setHeader("content-type", "text/csv");
-        run.getDataStream(0, false)
+        run.getDataStream(0, true)
             .pipe(new DataRenamerStream(run.schemaManager()))
             .pipe(new CSVEncoderStream(run.schemaManager().frameInterval()))
             .pipe(res);

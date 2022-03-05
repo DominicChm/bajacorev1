@@ -11,8 +11,9 @@ export class InstanceBinding {
     private readonly _instance: ModuleInstance;
 
     private readonly _mqttListener;
-    private readonly _channel;
+    private readonly _dataChannel;
     private readonly _dataListener;
+    private _configChannel: string;
 
     constructor(instance: ModuleInstance, router: MqttRouter, dataListener: bindingDataListener) {
         this.unbind = this.unbind.bind(this);
@@ -24,9 +25,12 @@ export class InstanceBinding {
         this._dataListener = dataListener;
 
         this._mqttListener = instance.feedRaw;
-        this._channel = `car/${instance.mac()}/raw`;
 
-        router.on(this._channel, this._mqttListener);
+        this._dataChannel = `car/${instance.mac()}/raw`;
+        this._configChannel = `car/${instance.mac()}/config`;
+
+        router.publish(this._configChannel, Buffer.from(instance.replicatedBinConfig())); //  JSON.stringify(instance.replicatedConfig())
+        router.on(this._dataChannel, this._mqttListener);
         instance.on("data", this.dataListenerWrapper);
 
     }
@@ -40,7 +44,7 @@ export class InstanceBinding {
     }
 
     unbind() {
-        this._router.off(this._channel, this._mqttListener);
+        this._router.off(this._dataChannel, this._mqttListener);
         this._instance.off("data", this.dataListenerWrapper);
     }
 }

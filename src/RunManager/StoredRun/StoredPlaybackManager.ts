@@ -96,7 +96,7 @@ export class StoredPlaybackManager extends PlaybackManager {
                 ...this.createStreamChunks(),
                 target: new EventStreamConsumer()
                     .on("data", this.runCB)
-                    .on("data", console.log)
+                    //.on("data", console.log)
                     .on("drain", this.stop)
                     .on("close", this.stop)
                     .on("finish", this.stop)

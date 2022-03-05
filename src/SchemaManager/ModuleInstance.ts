@@ -57,6 +57,16 @@ export class ModuleInstance extends TypedEmitter<ModuleInstanceEvents> {
         return false;
     }
 
+    /**
+     * Returns this instance's config, encoded into binary.
+     */
+    public replicatedBinConfig() {
+        return this._moduleType.replicatedConfigCType().allocLE(this.replicatedConfig());
+    }
+
+    public replicatedConfig() {
+        return this._moduleType.validateReplicatedConfig(this.config());
+    }
 
     public config(): ConfigT {
         return this._definition.config;

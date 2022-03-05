@@ -70,6 +70,14 @@ export class ModuleTypeDriver {
         return Joi.attempt(config, this._combinedConfigSchema, {noDefaults: true, presence: "required"});
     }
 
+    validateReplicatedConfig(config: any) {
+        return Joi.attempt(config, this._typeDefinition.replicatedConfigSchema, {
+            noDefaults: true,
+            presence: "required",
+            stripUnknown: true
+        });
+    }
+
     /**
      * Validates a module definition for this type.
      * @param config
@@ -100,5 +108,9 @@ export class ModuleTypeDriver {
 
     storageCType(): CType<any> {
         return this._typeDefinition.storageCType;
+    }
+
+    replicatedConfigCType() {
+        return this._typeDefinition.replicatedConfigCType
     }
 }
