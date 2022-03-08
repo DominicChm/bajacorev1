@@ -34,7 +34,7 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     private readonly _mqtt: MqttClient
     private readonly _router: MqttRouter;
     private readonly _run: RealtimeRun;
-    private _bindings: InstanceBinding[] = [];
+    private _bindings: Map<string, InstanceBinding> = new Map();
     private _frameTimer: NanoTimer;
 
     //TODO: REPLACE THIS SINGLE DISPATCHED DATA OBJECT WITH A REAL TIME-BASED
@@ -82,8 +82,7 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     }
 
     bindInstance(instance: ModuleInstance) {
-        this._bindings.push(new InstanceBinding(instance, this._router, this.gatherData));
-
+        this._bindings.set(instance.id(), new InstanceBinding(instance, this._router, this.gatherData));
         this._data = this.schemaManager()?.storedCType().readLE(new Uint8Array(1000).buffer);
     }
 
@@ -108,8 +107,8 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     }
 
     unbindInstance(instance: ModuleInstance) {
-        this._bindings.find(b => b.uuid() === instance.id())?.unbind();
-        this._bindings.filter(b => b.uuid() !== instance.id());
+        this._bindings.get(instance.id())?.unbind();
+        this._bindings.delete(instance.id());
     }
 
     getRuns(): RealtimeRun[] {

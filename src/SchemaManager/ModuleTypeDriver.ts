@@ -4,8 +4,9 @@ import {cStruct, CType} from "c-type-util";
 import {v4} from "uuid";
 import {ModuleDefinition} from "./interfaces/ModuleDefinition";
 import {ModuleDefinitionSchema} from "./schemas/ModuleDefinition";
-import {CommonReplicatedModuleConfig} from "./schemas/CommonReplicatedModuleConfig";
+import {CommonConfigCTypes, CommonReplicatedModuleConfig} from "./schemas/CommonReplicatedModuleConfig";
 import {hashCode} from "../Util/util";
+import {CommonRawCTypes} from "./schemas/CommonRawCTypes";
 
 /**
  * Drives and allows easy interaction with a ModuleTypeDefinition, which describes a type of module.
@@ -17,6 +18,8 @@ export class ModuleTypeDriver {
     private readonly _replicatedConfigSchema: Joi.ObjectSchema;
     private readonly _persistentConfigSchema: Joi.ObjectSchema;
     private readonly _definitionSchema: Joi.ObjectSchema;
+    private _rawCType: CType<any>;
+    private _replicatedConfigCType: CType<any>;
 
     constructor(typeDef: ModuleTypeDefinition) {
         this._typeDefinition = typeDef;
@@ -49,6 +52,16 @@ export class ModuleTypeDriver {
             defaultName: `New ${typeDef.typeName}`,
             defaultConfig: this.defaultConfig(),
         });
+
+        this._rawCType = cStruct({
+            ...CommonRawCTypes,
+            ...this._typeDefinition.rawCType,
+        });
+
+        this._replicatedConfigCType = cStruct({
+            ...CommonConfigCTypes,
+            ...this._typeDefinition.replicatedConfigCType
+        })
     }
 
     public typeHash() {
@@ -156,7 +169,7 @@ export class ModuleTypeDriver {
     }
 
     rawCType(): CType<any> {
-        return cStruct(this._typeDefinition.rawCType);
+        return this._rawCType;
     }
 
     storageCType(): CType<any> {
@@ -164,6 +177,6 @@ export class ModuleTypeDriver {
     }
 
     replicatedConfigCType(): CType<any> {
-        return cStruct(this._typeDefinition.replicatedConfigCType);
+        return this._replicatedConfigCType;
     }
 }

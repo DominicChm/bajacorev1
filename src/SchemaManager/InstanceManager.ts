@@ -40,7 +40,7 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
      * @param defs
      * @param throwOnBreak
      */
-    loadModuleDefinitions(defs: ModuleDefinition[], throwOnBreak: boolean = false) {
+    loadModuleDefinitions(defs: ModuleDefinition[], throwOnBreak: boolean = false, rebindAll = false) {
         checkDuplicates(defs, (m) => m.id);
 
         const mappedDefs = this.preprocessDefinition(this.definitionToMap(defs), throwOnBreak);
@@ -91,7 +91,10 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
         //Now that this class will return completely updated information, emit events and handle pre-load.
         deletions.forEach(i => this.emit("unbindInstance", i));
         creations.forEach(i => this.emit("bindInstance", i));
-        changes.forEach(i => this.emit("rebindInstance", i));
+        if (rebindAll)
+            instances.forEach(i => this.emit("rebindInstance", i));
+        else
+            changes.forEach(i => this.emit("rebindInstance", i));
 
         this._converters = new Map()
         for (const instance of this.instances()) {

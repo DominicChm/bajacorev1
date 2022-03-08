@@ -75,18 +75,17 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
      * @param fullReload
      */
     load(schema: DAQSchema, fullReload: boolean = false): this {
-        //Check schema for dupe IDs. Will throw if found.
         schema = Joi.attempt(schema, DAQSchemaValidator);
 
+        //Check schema for dupe IDs. Will throw if found.
         checkDuplicates(schema.modules, (m) => m.id);
         const loadedFlag = !this._schema;
 
         const {
             loadResults,
             definitions
-        } = this._instanceManager.loadModuleDefinitions(schema.modules, !this._opts.breakingAllowed);
+        } = this._instanceManager.loadModuleDefinitions(schema.modules, !this._opts.breakingAllowed, this.doesNewSchemaBreak(schema));
 
-        const broken = this.doesNewSchemaBreak(schema);
         this._schema = {
             ...schema,
             modules: definitions
@@ -97,7 +96,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         else
             this.emit("update", this.schema(), this.persistentSchema());
 
-        if (loadResults.deleted > 0 || loadResults.created > 0 || broken) {
+        if (loadResults.deleted > 0 || loadResults.created > 0 || this.doesNewSchemaBreak(schema)) {
             log("Format broken");
             this.emit("formatBroken", this.schema(), this.persistentSchema());
         }

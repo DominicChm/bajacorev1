@@ -32,10 +32,14 @@ export class InstanceBinding {
         // TODO: PUBLISH ARRAY OF SUPPORTED MODULE TYPE HASHES HERE.
         this._typeChannel = `car/${instance.mac()}/supported_types`;
 
-        router.publish(this._configChannel, Buffer.from(instance.replicatedBinConfig())); //  JSON.stringify(instance.replicatedConfig())
-        router.on(this._dataChannel, this._mqttListener);
-        instance.on("data", this.dataListenerWrapper);
+        this._router.on(this._dataChannel, this._mqttListener);
+        this._instance.on("data", this.dataListenerWrapper);
 
+        this.emitConfig();
+    }
+
+    public emitConfig() {
+        this._router.publish(this._configChannel, Buffer.from(this._instance.replicatedBinConfig())); //  JSON.stringify(instance.replicatedConfig())
     }
 
     public uuid() {

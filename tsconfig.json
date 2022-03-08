@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "moduleResolution": "Node",
-    "module": "commonjs",
-    "target": "es2016",
+    "module": "nodenext",
+    "target": "es2020",
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
