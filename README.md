@@ -67,3 +67,15 @@ Note I didn't include (substantial) stuff that was completed a long time ago.
 
 - [ ] Doc
 - [ ] Tests
+
+## Bin Format
+
+The .daq binary format is defined by its attached schema - It's unusable without it. It contains - in the same sequence
+as in the schema - a contiguous binary data blocks consisting of both module data and configuration at a specified point
+in time. Only replicated configuration is stored. IE:
+
+`<Module 1, Frame 1, Data><Module 1, Frame 1, Configuration><Module 2, Frame 1, Data><Module 2, Frame 1, Configuration><...Frame 2><...Frame 3>`
+
+This makes the bin data extremely space-efficient at the cost of usability without a schema. For longevity, I suggest
+exporting to CSV and compressing for long-term storage. 
+

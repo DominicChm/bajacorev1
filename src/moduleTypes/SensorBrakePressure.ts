@@ -1,6 +1,5 @@
 import Joi from "joi";
 import * as ctypes from "c-type-util"
-import {cStruct} from "c-type-util"
 import {ModuleTypeDefinition} from "../SchemaManager/interfaces/ModuleTypeDefinition";
 
 export const SensorBrakePressure: ModuleTypeDefinition = {
@@ -23,10 +22,7 @@ export const SensorBrakePressure: ModuleTypeDefinition = {
     // Raw describes the binary data coming in from the module.
     // Storage describes the data being stored to/from disk.
     // Storage should be a sub-type of Raw, such that some raw values might not be stored.
-    rawCType: {
-        analog: ctypes.uint16
-    },
-    storageCType:{
+    dataCType:{
         analog: ctypes.uint16
     },
     replicatedConfigCType: {
@@ -42,3 +38,4 @@ export const SensorBrakePressure: ModuleTypeDefinition = {
         }
     }
 }
+
