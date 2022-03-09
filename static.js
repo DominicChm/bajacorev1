@@ -1,6 +1,14 @@
 class Parent {
-
+    constructor() {
+        console.log(this.constructor.name);
+    }
 }
 
-console.log(Parent.name);
-console.log((new Parent()).constructor.name);
+class test extends Parent {
+    constructor() {
+        super();
+    }
+}
+
+
+new Parent();

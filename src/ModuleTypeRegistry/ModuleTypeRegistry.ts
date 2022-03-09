@@ -2,13 +2,14 @@ import {Module} from "./Module";
 import {Class} from "./Interfaces/Class";
 
 export class ModuleTypeRegistry {
-    private _moduleTypes: Map<string, Module>
+    private _moduleTypes: Map<string, Class<Module>>
 
-    public registerModule<T extends Module>(lel: Class<T>) {
-
+    public registerModule<T extends Module>(clazz: Class<T>): this {
+        this._moduleTypes.set(clazz.constructor.name, clazz);
+        return this;
     }
 
-    private validateModule<T extends Module>(lel: Class<T>) {
+    private validateModule<T extends Module>(clazz: Class<T>) {
 
     }
 }

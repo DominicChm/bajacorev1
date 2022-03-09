@@ -3,16 +3,17 @@ import {ModuleInstance} from "./ModuleInstance";
 import {ModuleDefinition} from "./interfaces/ModuleDefinition";
 import {cloneDeep} from "lodash";
 import {TypedEmitter} from "tiny-typed-emitter";
-import {moduleTypeDefinitions} from "../moduleTypes";
 import {ModuleTypeDriver} from "./ModuleTypeDriver";
 import {logger} from "../Util/logging";
-import {checkDuplicates} from "../Util/util";
+import {bindThis, checkDuplicates} from "../Util/util";
 import {cStruct, CType} from "c-type-util";
-import {InstanceManager} from "./InstanceManager";
 import {SchemaManagerEvents} from "./interfaces/SchemaManagerEvents";
 import {SchemaManagerOptions} from "./interfaces/SchemaManagerOptions";
 import Joi from "joi";
 import {DAQSchemaValidator} from "./schemas/DAQSchema";
+import {ModuleTypeRegistry} from "../ModuleTypeRegistry/ModuleTypeRegistry";
+import {SBP} from "../moduleTypes/SensorBrakePressure";
+import {Module} from "../ModuleTypeRegistry/Module";
 
 const log = logger("SchemaManager");
 
@@ -21,33 +22,23 @@ const log = logger("SchemaManager");
  * Manages a DAQSchema. Handles mutation, loading, and unloading.
  */
 export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
-    private _schema: DAQSchema | null = null;
-    private _instanceManager: InstanceManager;
     private readonly _opts: SchemaManagerOptions;
-    private readonly _moduleTypeDrivers: ModuleTypeDriver[];
+    private _registry: ModuleTypeRegistry;
 
-    constructor(opts: Partial<SchemaManagerOptions> = {}) {
+    private _frameInterval: number;
+    private _name: string;
+    private _modules: { [key: string]: Module };
+
+    constructor(opts: SchemaManagerOptions) {
         super();
+        bindThis(SchemaManager, this);
+
         this._opts = {
-            moduleTypes: moduleTypeDefinitions,
             breakingAllowed: true,
             ...opts,
         };
 
-        this._moduleTypeDrivers = moduleTypeDefinitions.map(v => new ModuleTypeDriver(v));
-
-
-        //Validate drivers
-        checkDuplicates(this._moduleTypeDrivers, m => m.typeName());
-        checkDuplicates(this._moduleTypeDrivers, m => m.typeHash());
-
-
-        this.load = this.load.bind(this);
-        this.moduleTypes = this.moduleTypes.bind(this);
-        this.createNewModuleDefinition = this.createNewModuleDefinition.bind(this);
-        this.validateDefinition = this.validateDefinition.bind(this);
-
-        this._instanceManager = new InstanceManager(this);
+        this._registry = new ModuleTypeRegistry().registerModule(SBP);
     }
 
     setAllowBreaking(val: boolean): this {
@@ -55,80 +46,52 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         return this;
     }
 
-    //Returns module types.
-    moduleTypes() {
-        return this._opts.moduleTypes;
-    }
-
-    moduleDrivers() {
-        return this._moduleTypeDrivers;
+    registry() {
+        return this._registry;
     }
 
     doesNewSchemaBreak(schema: DAQSchema) {
         return schema.frameInterval !== this.frameInterval();
     }
 
+    preprocessSchema() {
+
+    }
+
     /**
      * Loads a new schema. If the new schema requires a full reload (a new module is added, or a dependency breaks)
      * the current schema is unloaded first. If a full reload isn't required, it just updates current instances.
      * @param schema
-     * @param fullReload
      */
-    load(schema: DAQSchema, fullReload: boolean = false): this {
+    load(schema: DAQSchema): this {
         schema = Joi.attempt(schema, DAQSchemaValidator);
 
-        //Check schema for dupe IDs. Will throw if found.
-        checkDuplicates(schema.modules, (m) => m.id);
-        const loadedFlag = !this._schema;
+        Object.values(this._modules).forEach(m => m.beginUpdate());
 
-        const {
-            loadResults,
-            definitions
-        } = this._instanceManager.loadModuleDefinitions(schema.modules, !this._opts.breakingAllowed, this.doesNewSchemaBreak(schema));
+        //Step 1 - Update the definitions of existing modules.
+        for (const [id, moduleDefinition] of Object.entries(schema.modules))
+            this._modules[id] = this._modules.updateDefinition(moduleDefinition);
 
-        this._schema = {
-            ...schema,
-            modules: definitions
-        };
-
-        if (loadedFlag)
-            this.emit("load", this.schema(), this.persistentSchema());
-        else
-            this.emit("update", this.schema(), this.persistentSchema());
-
-        if (loadResults.deleted > 0 || loadResults.created > 0 || this.doesNewSchemaBreak(schema)) {
-            log("Format broken");
-            this.emit("formatBroken", this.schema(), this.persistentSchema());
-        }
+        //Step 2 - Delete invalid/not updated (deleted) modules
+        for (const [id, module] of Object.entries(this._modules).filter(([id, m]) => !m.isUpdateValid()))
+            module.destroy();
 
         return this;
     }
 
     /**
-     * Validates and returns a passed module definition, based on its typename.
-     * @param def
-     * @private
-     */
-    private validateDefinition(def: ModuleDefinition) {
-        return this.findDriver(def.type).validateDefinition(def);
-    }
-
-    /**
      * Returns the current Schema.
      */
-    public schema() {
+    public schema(): DAQSchema {
         if (!this._schema)
             throw new Error("No schema loaded!");
 
-        return cloneDeep(this._schema);
-
-    }
-
-    public persistentSchema(): DAQSchema {
         return {
-            ...this._schema,
-            modules: this._instanceManager.instances().map(i => i.persistentDefinition()),
+            frameInterval: this._frameInterval,
+            name: this._name,
+            modules: Object.values(this._modules).map(v => v.definition())
         }
+
     }
 
     //Adds a bare-minimum definition to the schema.
