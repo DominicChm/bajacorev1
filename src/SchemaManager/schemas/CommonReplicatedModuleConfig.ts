@@ -14,5 +14,4 @@ export const CommonReplicatedModuleConfig = {
 
 export const CommonConfigCTypes = {
     typeNameHash: uint32,
-    globalSampleInterval: uint32,
 }

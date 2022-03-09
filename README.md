@@ -28,7 +28,7 @@ Note I didn't include (substantial) stuff that was completed a long time ago.
       module-specific configs all extend a common, base, config.
     - Uses: Controlling global sample rate, batching size, etc.
 - [x] Better schema editing (deleting modules, pretty much :/ ) (~30min)
-- [ ] Module framework (for ESPs)
+- [x] Module framework (for ESPs)
 - [ ] Way to verify module type validity
     - Do after config extension refactor. Probably hash typeName and include at beginning of every single config struct.
     - Maybe also publish supported hashes to a channel on module startup so mis-configurations can be caught and fixed.

@@ -39,6 +39,7 @@ export class InstanceManager extends TypedEmitter<InstanceManagerEvents> {
      * Loads and validates passed definitions
      * @param defs
      * @param throwOnBreak
+     * @param rebindAll
      */
     loadModuleDefinitions(defs: ModuleDefinition[], throwOnBreak: boolean = false, rebindAll = false) {
         checkDuplicates(defs, (m) => m.id);

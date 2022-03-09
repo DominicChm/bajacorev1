@@ -80,11 +80,12 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         //Check schema for dupe IDs. Will throw if found.
         checkDuplicates(schema.modules, (m) => m.id);
         const loadedFlag = !this._schema;
+        const broken = this.doesNewSchemaBreak(schema);
 
         const {
             loadResults,
             definitions
-        } = this._instanceManager.loadModuleDefinitions(schema.modules, !this._opts.breakingAllowed, this.doesNewSchemaBreak(schema));
+        } = this._instanceManager.loadModuleDefinitions(schema.modules, !this._opts.breakingAllowed);
 
         this._schema = {
             ...schema,
@@ -96,7 +97,7 @@ export class SchemaManager extends TypedEmitter<SchemaManagerEvents> {
         else
             this.emit("update", this.schema(), this.persistentSchema());
 
-        if (loadResults.deleted > 0 || loadResults.created > 0 || this.doesNewSchemaBreak(schema)) {
+        if (loadResults.deleted > 0 || loadResults.created > 0 || broken) {
             log("Format broken");
             this.emit("formatBroken", this.schema(), this.persistentSchema());
         }

@@ -39,7 +39,7 @@ export class InstanceBinding {
     }
 
     public emitConfig() {
-        this._router.publish(this._configChannel, Buffer.from(this._instance.replicatedBinConfig())); //  JSON.stringify(instance.replicatedConfig())
+        this._router.publish(this._configChannel, Buffer.from(this._instance.replicatedBinConfig()), {retain: true}); //  JSON.stringify(instance.replicatedConfig())
     }
 
     public uuid() {

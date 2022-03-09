@@ -9,6 +9,7 @@ import {logger} from "../Util/logging";
 import {InstanceBinding} from "./InstanceBinding";
 import {performance} from "perf_hooks";
 import NanoTimer from "nanotimer";
+import {cStruct, uint32} from "c-type-util";
 
 const log = logger("ModuleManager");
 
@@ -23,6 +24,9 @@ interface ModuleManagerEvents {
 
 }
 
+const globalConfig = cStruct({
+    sampleInterval: uint32,
+})
 
 /**
  * Facilitates interactions with remote modules. Sets up and tears down MQTT and provides a RealtimeRun
@@ -63,6 +67,10 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
 
         this._frameTimer = new NanoTimer()
         this._frameTimer.setInterval(this.dispatchData.bind(this), '', `${this._run.schemaManager().frameInterval()}m`);
+        this._router.publish("car/global",
+            Buffer.from(globalConfig.allocLE({sampleInterval: this._run.schemaManager().frameInterval()})),
+            {retain: true}
+        );
     }
 
     /**
@@ -71,6 +79,10 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
     onFormatBroken() {
         this._frameTimer.clearInterval();
         this._frameTimer.setInterval(this.dispatchData.bind(this), '', `${this._run.schemaManager().frameInterval()}m`);
+        this._router.publish("car/global",
+            Buffer.from(globalConfig.allocLE({sampleInterval: this._run.schemaManager().frameInterval()})),
+            {retain: true}
+        );
     }
 
     schemaManager() {
@@ -118,30 +130,3 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
         return [];
     }
 }
-
-//
-// const testSchema: DAQSchema = {
-//     name: "Schema",
-//     modules: [
-//         {
-//             name: "Brake Pressure",
-//             id: "AA:BB:CC:DD:EE:FF",
-//             description: "Test brake pressure sensor",
-//             version: 0,
-//             type: "brake_pressure",
-//             config: {
-//                 config_v: 1
-//             }
-//         }
-//     ]
-// }
-//
-// const mm = new ModuleManager({
-//     moduleTypes: [SensorBrakePressure],
-//     mqttUrl: "mqtt://localhost:1883"
-// }).loadSchema(testSchema);
-//
-// setInterval(() => {
-//     const i = mm.instance("aa.bb.cc.dd.ee.ff");
-//     i.printMessage("test");
-// }, 1000);
