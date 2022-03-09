@@ -1,6 +1,5 @@
 import {RealtimeRun} from "../RunManager/RealtimeRun/RealtimeRun";
 import {v4} from "uuid"
-import {ModuleInstance} from "../SchemaManager/ModuleInstance";
 import {DAQSchema} from "../SchemaManager/interfaces/DAQSchema";
 import {connect, MqttClient} from "mqtt";
 import {MqttRouter} from "./MqttRouter";
@@ -118,30 +117,3 @@ export class ModuleManager extends TypedEmitter<ModuleManagerEvents> {
         return [];
     }
 }
-
-//
-// const testSchema: DAQSchema = {
-//     name: "Schema",
-//     modules: [
-//         {
-//             name: "Brake Pressure",
-//             id: "AA:BB:CC:DD:EE:FF",
-//             description: "Test brake pressure sensor",
-//             version: 0,
-//             type: "brake_pressure",
-//             config: {
-//                 config_v: 1
-//             }
-//         }
-//     ]
-// }
-//
-// const mm = new ModuleManager({
-//     moduleTypes: [SensorBrakePressure],
-//     mqttUrl: "mqtt://localhost:1883"
-// }).loadSchema(testSchema);
-//
-// setInterval(() => {
-//     const i = mm.instance("aa.bb.cc.dd.ee.ff");
-//     i.printMessage("test");
-// }, 1000);

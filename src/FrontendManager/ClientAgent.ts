@@ -6,7 +6,6 @@ import {logger} from "../Util/logging";
 import {PlaybackManager} from "../RunManager/PlaybackManager";
 import {RunHandle} from "../RunManager/RunHandle";
 import {bindThis} from "../Util/util";
-import {moduleTypeDefinitions} from "../moduleTypes";
 import {StoredPlaybackManager} from "../RunManager/StoredRun/StoredPlaybackManager";
 
 const log = logger("ClientAgent");
@@ -113,7 +112,7 @@ export class ClientAgent {
 
     private emitStatic() {
         this._io.emit(CHANNELS.CAPABILITIES, this._runManager.capabilities());
-        this._io.emit("module_types", moduleTypeDefinitions.map(v => v.typeName));
+        //this._io.emit("module_types", moduleTypeDefinitions.map(v => v.typeName));
     }
 
     private emitCompleteState() {

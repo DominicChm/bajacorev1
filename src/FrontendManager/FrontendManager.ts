@@ -4,8 +4,7 @@ import {Server, createServer} from "http";
 import {ClientManager} from "./ClientManager";
 import {logger} from "../Util/logging";
 import {StoredRun} from "../RunManager/StoredRun/StoredRun";
-import {DataRenamerStream} from "../StreamUtils/DataRenamerStream";
-import {CSVEncoderStream} from "../StreamUtils/CSVEncoderStream";
+import {DataRenamerStream, CSVEncoderStream} from "../StreamUtils";
 
 const log = logger("FrontendManager");
 
