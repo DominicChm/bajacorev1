@@ -4,10 +4,14 @@ import {Server, createServer} from "http";
 import {ClientManager} from "./ClientManager";
 import {logger} from "../Util/logging";
 import {StoredRun} from "../RunManager/StoredRun/StoredRun";
-import {DataRenamerStream} from "../StreamUtils/DataRenamerStream";
-import {CSVEncoderStream} from "../StreamUtils/CSVEncoderStream";
+import {DataRenamerStream} from "../StreamUtils";
+import {CSVEncoderStream} from "../StreamUtils";
 
 const log = logger("FrontendManager");
+
+export interface FrontendOpts {
+    port: number
+}
 
 /**
  * Sets up and manages all frontend connections and routes. Responsible for
@@ -19,7 +23,7 @@ export class FrontendManager {
     private readonly _clientManager: ClientManager;
     private readonly _runManager: RunManager;
 
-    constructor(rm: RunManager) {
+    constructor(opts: FrontendOpts, rm: RunManager) {
         this._app = Express();
         this._server = createServer(this._app);
         this._clientManager = new ClientManager(rm, this._server);
@@ -27,8 +31,7 @@ export class FrontendManager {
 
         this.setupRoutes();
 
-        //TODO: Make frontend port a config var!
-        this._server.listen(3000, () => log(`Listening on ${3000}`));
+        this._server.listen(opts.port, () => log(`Listening on ${opts.port}`));
     }
 
     private setupRoutes() {

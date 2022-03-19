@@ -5,7 +5,7 @@ import {DAQPathManager} from "./DAQFileManager/DAQPathManager";
 import {StoredRunManager} from "./RunManager/StoredRunManager";
 import {TimeSyncServer} from "./TimeSync/TimeSyncServer";
 
-const daqFileManager = new DAQPathManager("./testData");
+const daqFileManager = new DAQPathManager(process.env.DAQ_DATA_DIR ?? "./testData");
 const storedRunManager = new StoredRunManager({
     runDataDirectory: daqFileManager.RunDataPath()
 });
@@ -18,5 +18,8 @@ const moduleManager = new ModuleManager({
 });
 
 const runManager = new RunManager(storedRunManager, moduleManager);
-const frontendManager = new FrontendManager(runManager);
+const frontendManager = new FrontendManager({
+    port: parseInt(process.env.HTTP_PORT) ?? 3000,
+}, runManager);
+
 const timeServer = new TimeSyncServer();
