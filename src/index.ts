@@ -5,6 +5,8 @@ import {DAQPathManager} from "./DAQFileManager/DAQPathManager";
 import {StoredRunManager} from "./RunManager/StoredRunManager";
 import {TimeSyncServer} from "./TimeSync/TimeSyncServer";
 
+console.log(process.env);
+
 const daqFileManager = new DAQPathManager(process.env.DAQ_DATA_DIR ?? "./testData");
 const storedRunManager = new StoredRunManager({
     runDataDirectory: daqFileManager.RunDataPath()
