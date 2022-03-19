@@ -19,7 +19,7 @@ const moduleManager = new ModuleManager({
 
 const runManager = new RunManager(storedRunManager, moduleManager);
 const frontendManager = new FrontendManager({
-    port: parseInt(process.env.HTTP_PORT) ?? 3000,
+    port: parseInt(process.env.HTTP_PORT) || 3000,
 }, runManager);
 
 const timeServer = new TimeSyncServer();
